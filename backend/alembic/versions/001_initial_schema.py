@@ -19,7 +19,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    vacancy_status = postgresql.ENUM(
+    # Создаём типы отдельно (checkfirst — если БД уже частично от предыдущего запуска).
+    # В колонках ниже — create_type=False, иначе create_table снова шлёт CREATE TYPE и падает с DuplicateObject.
+    vacancy_status_type = postgresql.ENUM(
         "new",
         "viewed",
         "applied",
@@ -28,13 +30,24 @@ def upgrade() -> None:
         name="vacancy_status",
         create_type=True,
     )
-    vacancy_status.create(op.get_bind(), checkfirst=True)
+    vacancy_status_type.create(op.get_bind(), checkfirst=True)
+    vacancy_status = postgresql.ENUM(
+        "new",
+        "viewed",
+        "applied",
+        "rejected",
+        "interview",
+        name="vacancy_status",
+        create_type=False,
+    )
 
-    analysis_source = postgresql.ENUM("manual", "scheduled", name="analysis_source", create_type=True)
-    analysis_source.create(op.get_bind(), checkfirst=True)
+    analysis_source_type = postgresql.ENUM("manual", "scheduled", name="analysis_source", create_type=True)
+    analysis_source_type.create(op.get_bind(), checkfirst=True)
+    analysis_source = postgresql.ENUM("manual", "scheduled", name="analysis_source", create_type=False)
 
-    sync_trigger = postgresql.ENUM("manual", "scheduled", name="sync_trigger", create_type=True)
-    sync_trigger.create(op.get_bind(), checkfirst=True)
+    sync_trigger_type = postgresql.ENUM("manual", "scheduled", name="sync_trigger", create_type=True)
+    sync_trigger_type.create(op.get_bind(), checkfirst=True)
+    sync_trigger = postgresql.ENUM("manual", "scheduled", name="sync_trigger", create_type=False)
 
     op.create_table(
         "saved_search",
