@@ -43,6 +43,7 @@ export default function SearchQueriesPage() {
   const [queries, setQueries] = useState<SearchQuery[]>([])
   const [syncingId, setSyncingId] = useState<string | null>(null)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const ANY = '__any__'
   const [newQuery, setNewQuery] = useState({
     keyword: '',
     location: '',
@@ -219,15 +220,17 @@ export default function SearchQueriesPage() {
                   <div className="space-y-2">
                     <Label>Опыт работы</Label>
                     <Select 
-                      value={newQuery.experience}
-                      onValueChange={(value) => setNewQuery(prev => ({ ...prev, experience: value }))}
+                      value={newQuery.experience || ANY}
+                      onValueChange={(value) =>
+                        setNewQuery((prev) => ({ ...prev, experience: value === ANY ? '' : value }))
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Выберите" />
                       </SelectTrigger>
                       <SelectContent>
                         {experienceOptions.map(opt => (
-                          <SelectItem key={opt.value} value={opt.value || 'any'}>
+                          <SelectItem key={opt.value || ANY} value={opt.value || ANY}>
                             {opt.label}
                           </SelectItem>
                         ))}
@@ -238,15 +241,17 @@ export default function SearchQueriesPage() {
                   <div className="space-y-2">
                     <Label>Занятость</Label>
                     <Select 
-                      value={newQuery.employment}
-                      onValueChange={(value) => setNewQuery(prev => ({ ...prev, employment: value }))}
+                      value={newQuery.employment || ANY}
+                      onValueChange={(value) =>
+                        setNewQuery((prev) => ({ ...prev, employment: value === ANY ? '' : value }))
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Выберите" />
                       </SelectTrigger>
                       <SelectContent>
                         {employmentOptions.map(opt => (
-                          <SelectItem key={opt.value} value={opt.value || 'any'}>
+                          <SelectItem key={opt.value || ANY} value={opt.value || ANY}>
                             {opt.label}
                           </SelectItem>
                         ))}

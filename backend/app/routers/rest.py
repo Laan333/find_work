@@ -147,13 +147,20 @@ def create_search(
         VacancySourceRegistry.get(src_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Unknown vacancySource") from None
+    experience = body.experience.strip() if body.experience else None
+    if experience in {"any", "__any__", ""}:
+        experience = None
+    employment = body.employment.strip() if body.employment else None
+    if employment in {"any", "__any__", ""}:
+        employment = None
+
     s = SavedSearch(
         id=uuid.uuid4(),
         keyword=body.keyword,
         area_id=body.area_id,
         location_label=body.location,
-        experience=body.experience,
-        employment=body.employment,
+        experience=experience,
+        employment=employment,
         schedule=body.schedule,
         salary_from=body.salary_from,
         salary_to=body.salary_to,
@@ -189,9 +196,13 @@ def patch_search(
     if "location" in data:
         s.location_label = data["location"]
     if "experience" in data:
-        s.experience = data["experience"]
+        v = data["experience"]
+        v = v.strip() if isinstance(v, str) else v
+        s.experience = None if v in {None, "", "any", "__any__"} else v
     if "employment" in data:
-        s.employment = data["employment"]
+        v = data["employment"]
+        v = v.strip() if isinstance(v, str) else v
+        s.employment = None if v in {None, "", "any", "__any__"} else v
     if "schedule" in data:
         s.schedule = data["schedule"]
     if "salary_from" in data:

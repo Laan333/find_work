@@ -17,9 +17,12 @@ def _hh_api_token(value: str | None) -> str | None:
 
     if not value:
         return None
+    v = value.strip().lower()
+    if v in {"any", "__any__", "all", "*"}:
+        return None
     if any(ord(c) > 127 for c in value):
         return None
-    return value
+    return value.strip()
 
 
 def fetch_vacancies_page(
