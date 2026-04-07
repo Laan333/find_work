@@ -91,7 +91,7 @@ services:
     ports:
       # NGINX_BIND=0.0.0.0 — слушать на всех интерфейсах (доступ из интернета, если порт открыт в фаерволе)
       - "${NGINX_BIND:-0.0.0.0}:${HTTP_PORT:-8080}:80"
-      - "${NGINX_BIND:-0.0.0.0}:${HTTPS_PORT:-8443}:443"
+      # HTTPS: при ENABLE_NGINX_SSL=1 добавьте вторую строку вручную (см. README), иначе порт 8443/443 часто занят зря
     environment:
       NGINX_SERVER_NAMES: ${NGINX_SERVER_NAMES:-_}
       NGINX_LISTEN_PORT: ${NGINX_LISTEN_PORT:-80}

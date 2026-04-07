@@ -1,0 +1,10 @@
+# Опционально: проброс HTTPS наружу (подключать вместе с основным файлом).
+# Пример: docker compose -f docker-compose.yml -f docker-compose.ssl-ports.yml up -d
+# Подберите свободный хост-порт вместо 8443, если занят.
+#
+# Требуется ENABLE_NGINX_SSL=1 и сертификаты в ./nginx/certs
+
+services:
+  nginx:
+    ports:
+      - "${NGINX_BIND:-0.0.0.0}:${HTTPS_PORT:-8443}:443"
