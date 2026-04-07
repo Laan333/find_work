@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { Header } from '@/components/dashboard/header'
 import { VacancyCard } from '@/components/dashboard/vacancy-card'
@@ -16,13 +16,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ApiError, fetchLlmStatus, fetchVacancies, patchVacancy, postAnalyze } from '@/lib/api'
-import type { Vacancy } from '@/lib/types'
+import { ApiError, fetchLlmStatus, fetchSearches, fetchVacancies, patchVacancy, postAnalyze } from '@/lib/api'
+import type { SearchQuery, Vacancy } from '@/lib/types'
 import { Search, Filter, SortAsc, Star, Brain, Grid3X3, List } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function VacanciesPage() {
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
+  const [searches, setSearches] = useState<SearchQuery[]>([])
+  const [selectedSearchId, setSelectedSearchId] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sortBy, setSortBy] = useState<string>('date')
@@ -31,7 +33,17 @@ export default function VacanciesPage() {
   const [coverLetterVacancy, setCoverLetterVacancy] = useState<Vacancy | null>(null)
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
   const [llmCooldownSeconds, setLlmCooldownSeconds] = useState(0)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  const PAGE_SIZE = 40
+
+  const selectedSearchKeyword = useMemo(() => {
+    if (selectedSearchId === 'all') return ''
+    return searches.find((s) => s.id === selectedSearchId)?.keyword ?? ''
+  }, [searches, selectedSearchId])
 
   useEffect(() => {
     let cancelled = false
@@ -52,21 +64,61 @@ export default function VacanciesPage() {
     }
   }, [])
 
-  const loadVacancies = useCallback(async () => {
-    setLoading(true)
+  const loadVacancies = useCallback(async (nextPage = 1, append = false) => {
+    if (append) setLoadingMore(true)
+    else setLoading(true)
     try {
-      const data = await fetchVacancies({ pageSize: 500 })
-      setVacancies(data.items)
+      const data = await fetchVacancies({
+        page: nextPage,
+        pageSize: PAGE_SIZE,
+        favoriteOnly: showFavoritesOnly || undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        q: selectedSearchKeyword || undefined,
+      })
+      setTotal(data.total)
+      setPage(data.page)
+      setVacancies((prev) => (append ? [...prev, ...data.items] : data.items))
     } catch (e) {
       toast.error(e instanceof ApiError ? `Ошибка загрузки (${e.status})` : 'Не удалось загрузить вакансии')
     } finally {
-      setLoading(false)
+      if (append) setLoadingMore(false)
+      else setLoading(false)
+    }
+  }, [selectedSearchKeyword, showFavoritesOnly, statusFilter])
+
+  useEffect(() => {
+    void loadVacancies(1, false)
+  }, [loadVacancies])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const items = await fetchSearches()
+        if (!cancelled) setSearches(items)
+      } catch {
+        /* ignore optional filter data failure */
+      }
+    })()
+    return () => {
+      cancelled = true
     }
   }, [])
 
   useEffect(() => {
-    void loadVacancies()
-  }, [loadVacancies])
+    const node = loadMoreRef.current
+    if (!node || loading || loadingMore || vacancies.length >= total) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !loadingMore && vacancies.length < total) {
+          void loadVacancies(page + 1, true)
+        }
+      },
+      { rootMargin: '220px' },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [loadVacancies, loading, loadingMore, page, total, vacancies.length])
 
   const filteredVacancies = vacancies
     .filter((v) => {
@@ -80,8 +132,6 @@ export default function VacanciesPage() {
       }
       return true
     })
-    .filter((v) => statusFilter === 'all' || v.status === statusFilter)
-    .filter((v) => !showFavoritesOnly || v.isFavorite)
     .sort((a, b) => {
       switch (sortBy) {
         case 'date':
@@ -190,6 +240,21 @@ export default function VacanciesPage() {
             </SelectContent>
           </Select>
 
+          <Select value={selectedSearchId} onValueChange={setSelectedSearchId}>
+            <SelectTrigger className="w-[240px]">
+              <Search className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Поисковый запрос" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все поисковые запросы</SelectItem>
+              {searches.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.keyword}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-[160px]">
               <SortAsc className="w-4 h-4 mr-2" />
@@ -214,7 +279,7 @@ export default function VacanciesPage() {
             Избранное
           </Button>
 
-          <Button variant="outline" size="sm" onClick={() => void loadVacancies()} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={() => void loadVacancies(1, false)} disabled={loading}>
             Обновить
           </Button>
 
@@ -231,15 +296,15 @@ export default function VacanciesPage() {
         <div className="flex items-center gap-4 flex-wrap">
           <Badge variant="secondary" className="gap-1">
             <div className="w-2 h-2 rounded-full bg-primary" />
-            Новые: {vacancies.filter((v) => v.status === 'new').length}
+            Новые: {filteredVacancies.filter((v) => v.status === 'new').length}
           </Badge>
           <Badge variant="secondary" className="gap-1">
             <Brain className="w-3 h-3" />
-            Проанализировано: {vacancies.filter((v) => v.isAnalyzed).length}
+            Проанализировано: {filteredVacancies.filter((v) => v.isAnalyzed).length}
           </Badge>
           <Badge variant="secondary" className="gap-1">
             <Star className="w-3 h-3 fill-current text-chart-5" />
-            В избранном: {vacancies.filter((v) => v.isFavorite).length}
+            В избранном: {filteredVacancies.filter((v) => v.isFavorite).length}
           </Badge>
         </div>
 
@@ -258,6 +323,13 @@ export default function VacanciesPage() {
             />
           ))}
         </div>
+
+        <div ref={loadMoreRef} className="h-8" />
+        {(loadingMore || vacancies.length < total) && (
+          <div className="text-center text-sm text-muted-foreground pb-4">
+            {loadingMore ? 'Загружаем еще вакансии...' : 'Прокрутите ниже для подгрузки'}
+          </div>
+        )}
 
         {!loading && filteredVacancies.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center">

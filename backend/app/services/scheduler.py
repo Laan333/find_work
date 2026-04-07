@@ -13,7 +13,7 @@ from app.database import SessionLocal
 from app.models import SyncTrigger
 from app.services.matching_job import run_scheduled_matching
 from app.services.sync_service import run_full_sync
-from app.settings_service import ensure_defaults, get_int, get_str, get_value, set_value
+from app.settings_service import ensure_defaults, get_bool, get_int, get_str, get_value, set_value
 
 logger = logging.getLogger(__name__)
 
@@ -38,21 +38,22 @@ def _tick() -> None:
                     set_value(db, "last_scheduled_sync_date", today)
                     run_full_sync(db, trigger=SyncTrigger.scheduled)
 
-            interval_min = get_int(db, "match_analysis_interval_minutes", s.default_match_interval_minutes)
-            last_raw = get_value(db, "last_match_job_at", None)
-            now_utc = datetime.now(timezone.utc)
-            if last_raw is None:
-                run_scheduled_matching(db)
-            else:
-                try:
-                    lm = datetime.fromisoformat(str(last_raw).replace("Z", "+00:00"))
-                    if lm.tzinfo is None:
-                        lm = lm.replace(tzinfo=timezone.utc)
-                    delta_min = (now_utc - lm).total_seconds() / 60.0
-                    if delta_min >= interval_min:
-                        run_scheduled_matching(db)
-                except ValueError:
+            if get_bool(db, "auto_analyze", False):
+                interval_min = get_int(db, "match_analysis_interval_minutes", s.default_match_interval_minutes)
+                last_raw = get_value(db, "last_match_job_at", None)
+                now_utc = datetime.now(timezone.utc)
+                if last_raw is None:
                     run_scheduled_matching(db)
+                else:
+                    try:
+                        lm = datetime.fromisoformat(str(last_raw).replace("Z", "+00:00"))
+                        if lm.tzinfo is None:
+                            lm = lm.replace(tzinfo=timezone.utc)
+                        delta_min = (now_utc - lm).total_seconds() / 60.0
+                        if delta_min >= interval_min:
+                            run_scheduled_matching(db)
+                    except ValueError:
+                        run_scheduled_matching(db)
         except Exception:
             logger.exception("Scheduler tick failed")
 

@@ -64,12 +64,14 @@ export async function fetchVacancies(params?: {
   pageSize?: number
   favoriteOnly?: boolean
   status?: string
+  q?: string
 }): Promise<VacanciesListResponse> {
   const sp = new URLSearchParams()
   if (params?.page) sp.set('page', String(params.page))
   if (params?.pageSize) sp.set('pageSize', String(params.pageSize))
   if (params?.favoriteOnly) sp.set('favoriteOnly', 'true')
   if (params?.status) sp.set('status', params.status)
+  if (params?.q?.trim()) sp.set('q', params.q.trim())
   const q = sp.toString()
   const r = await apiFetch(`/vacancies/${q ? `?${q}` : ''}`)
   return parseJson(r)

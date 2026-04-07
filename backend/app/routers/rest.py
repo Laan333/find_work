@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import uuid
 from collections import Counter
 from datetime import datetime, timezone
@@ -37,6 +38,66 @@ from app.sources import VacancySourceRegistry
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["rest"])
+
+_SKILL_FALLBACK_KEYWORDS: tuple[str, ...] = (
+    "python",
+    "django",
+    "fastapi",
+    "flask",
+    "sql",
+    "postgresql",
+    "docker",
+    "kubernetes",
+    "aws",
+    "gcp",
+    "azure",
+    "redis",
+    "celery",
+    "git",
+    "linux",
+    "javascript",
+    "typescript",
+    "react",
+    "next.js",
+    "node.js",
+    "pandas",
+    "numpy",
+    "machine learning",
+    "nlp",
+    "llm",
+)
+
+
+def _normalize_skill_name(value: str) -> str:
+    clean = re.sub(r"\s+", " ", value).strip()
+    return clean.lower()
+
+
+def _collect_skills_counter(db: Session) -> Counter[str]:
+    skills_counter: Counter[str] = Counter()
+    rows = db.query(Vacancy.skills, Vacancy.title, Vacancy.requirements_md, Vacancy.description_md).all()
+    for skills, title, requirements, description in rows:
+        normalized_any = False
+        for item in skills or []:
+            raw = str(item or "").strip()
+            if not raw:
+                continue
+            normalized = _normalize_skill_name(raw)
+            if normalized:
+                skills_counter[normalized] += 1
+                normalized_any = True
+        if normalized_any:
+            continue
+
+        haystack = " ".join(
+            part for part in [str(title or ""), str(requirements or ""), str(description or "")] if part
+        ).lower()
+        if not haystack:
+            continue
+        for kw in _SKILL_FALLBACK_KEYWORDS:
+            if kw in haystack:
+                skills_counter[kw] += 1
+    return skills_counter
 
 
 def _mask_secret(value: str | None) -> str:
@@ -561,10 +622,7 @@ def analytics(db: Session = Depends(get_db), _t: str = Depends(verify_api_key)) 
     avg_row = db.query(func.avg(Vacancy.salary_from)).filter(Vacancy.salary_from.isnot(None)).scalar()
     avg_salary = int(avg_row) if avg_row is not None else 0
 
-    skills_counter: Counter[str] = Counter()
-    for (sk,) in db.query(Vacancy.skills).all():
-        for x in sk or []:
-            skills_counter[str(x)] += 1
+    skills_counter = _collect_skills_counter(db)
     top_skills = [{"skill": k, "count": v} for k, v in skills_counter.most_common(12)]
 
     by_date: dict[str, int] = {}

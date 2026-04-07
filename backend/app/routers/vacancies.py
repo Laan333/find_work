@@ -10,6 +10,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -78,19 +79,37 @@ def list_vacancies(
     _t: str = Depends(verify_api_key),
     status: VacancyStatus | None = None,
     favorite_only: bool = Query(default=False, alias="favoriteOnly"),
+    search_text: str | None = Query(
+        default=None,
+        alias="q",
+        description="Case-insensitive text search in title/company/description/skills",
+    ),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=MAX_VACANCIES_PAGE_SIZE, alias="pageSize"),
 ) -> dict[str, Any]:
     """Paginated vacancy list."""
 
-    q = db.query(Vacancy)
+    stmt = db.query(Vacancy)
     if status is not None:
-        q = q.filter(Vacancy.status == status)
+        stmt = stmt.filter(Vacancy.status == status)
     if favorite_only:
-        q = q.filter(Vacancy.is_favorite.is_(True))
-    total = q.count()
+        stmt = stmt.filter(Vacancy.is_favorite.is_(True))
+    if search_text:
+        term = f"%{search_text.strip()}%"
+        if term != "%%":
+            stmt = stmt.filter(
+                or_(
+                    Vacancy.title.ilike(term),
+                    Vacancy.company.ilike(term),
+                    Vacancy.description_md.ilike(term),
+                    Vacancy.requirements_md.ilike(term),
+                    Vacancy.responsibilities_md.ilike(term),
+                    Vacancy.skills.cast(str).ilike(term),
+                )
+            )
+    total = stmt.count()
     rows = (
-        q.order_by(Vacancy.published_at.desc().nulls_last())
+        stmt.order_by(Vacancy.published_at.desc().nulls_last())
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()

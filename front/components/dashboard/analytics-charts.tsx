@@ -23,7 +23,14 @@ interface AnalyticsChartsProps {
   analytics: Analytics
 }
 
-const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))']
+const COLORS = ['#60a5fa', '#34d399', '#fbbf24', '#a78bfa', '#f472b6']
+const AXIS_TICK = { fontSize: 12, fill: 'hsl(var(--foreground))' }
+const TOOLTIP_STYLE = {
+  backgroundColor: 'hsl(var(--card))',
+  border: '1px solid hsl(var(--border))',
+  borderRadius: '8px',
+  color: 'hsl(var(--foreground))',
+}
 
 export function AnalyticsCharts({ analytics }: AnalyticsChartsProps) {
   return (
@@ -46,16 +53,12 @@ export function AnalyticsCharts({ analytics }: AnalyticsChartsProps) {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis 
                   dataKey="date" 
-                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                  tick={AXIS_TICK}
                   tickFormatter={(value) => new Date(value).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                 />
-                <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                <YAxis tick={AXIS_TICK} />
                 <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))', 
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
+                  contentStyle={TOOLTIP_STYLE}
                   labelFormatter={(value) => new Date(value).toLocaleDateString('ru-RU')}
                 />
                 <Area
@@ -82,23 +85,19 @@ export function AnalyticsCharts({ analytics }: AnalyticsChartsProps) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={analytics.topSkills.slice(0, 6)} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                <XAxis type="number" tick={AXIS_TICK} />
                 <YAxis 
                   type="category" 
                   dataKey="skill" 
-                  width={80}
-                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                  width={120}
+                  tick={AXIS_TICK}
                 />
                 <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))', 
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
+                  contentStyle={TOOLTIP_STYLE}
                 />
                 <Bar 
                   dataKey="count" 
-                  fill="hsl(var(--chart-1))" 
+                  fill={COLORS[0]} 
                   radius={[0, 4, 4, 0]}
                 />
               </BarChart>
@@ -131,11 +130,7 @@ export function AnalyticsCharts({ analytics }: AnalyticsChartsProps) {
                   ))}
                 </Pie>
                 <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))', 
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
+                  contentStyle={TOOLTIP_STYLE}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -167,19 +162,15 @@ export function AnalyticsCharts({ analytics }: AnalyticsChartsProps) {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis 
                   dataKey="experience" 
-                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  tick={{ fontSize: 11, fill: 'hsl(var(--foreground))' }}
                 />
-                <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                <YAxis tick={AXIS_TICK} />
                 <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))', 
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
+                  contentStyle={TOOLTIP_STYLE}
                 />
                 <Bar 
                   dataKey="count" 
-                  fill="hsl(var(--chart-2))" 
+                  fill={COLORS[1]} 
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
