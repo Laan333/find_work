@@ -11,6 +11,20 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_HH_UA = "hh-vacancy-searcher/1.0 (contact: you@example.com)"
+
+
+def _hh_headers() -> dict[str, str]:
+    """Build headers for hh.ru API.
+
+    HH may respond with 400 on missing/empty User-Agent, so we always provide a non-empty value.
+    """
+
+    ua = (get_settings().hh_user_agent or "").strip()
+    if not ua:
+        ua = _DEFAULT_HH_UA
+    return {"User-Agent": ua, "Accept": "application/json"}
+
 
 def _hh_api_token(value: str | None) -> str | None:
     """Pass only ASCII tokens (hh enum ids); skip Russian labels from UI."""
@@ -61,11 +75,16 @@ def fetch_vacancies_page(
         params["only_with_salary"] = True
     _ = salary_to
 
-    headers = {"User-Agent": s.hh_user_agent}
+    headers = _hh_headers()
     url = f"{s.hh_base_url.rstrip('/')}/vacancies"
     with httpx.Client(timeout=30.0) as client:
         resp = client.get(url, headers=headers, params=params)
-        resp.raise_for_status()
+        try:
+            resp.raise_for_status()
+        except httpx.HTTPStatusError:
+            # HH often returns a helpful JSON body for 400s; include it in logs for debugging.
+            logger.error("HH /vacancies error %s for %s; body=%s", resp.status_code, resp.request.url, resp.text)
+            raise
         return resp.json()
 
 
@@ -73,7 +92,7 @@ def fetch_vacancy_detail(external_id: str) -> dict[str, Any]:
     """Call `GET /vacancies/{id}` for full card."""
 
     s = get_settings()
-    headers = {"User-Agent": s.hh_user_agent}
+    headers = _hh_headers()
     url = f"{s.hh_base_url.rstrip('/')}/vacancies/{external_id}"
     with httpx.Client(timeout=30.0) as client:
         resp = client.get(url, headers=headers)
