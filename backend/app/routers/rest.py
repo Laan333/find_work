@@ -739,8 +739,36 @@ def match_run_once(db: Session = Depends(get_db), _t: str = Depends(verify_api_k
 @router.get("/process/status")
 def process_status(db: Session = Depends(get_db), _t: str = Depends(verify_api_key)) -> dict[str, Any]:
     """Current active long-running process status for header polling."""
-
-    return get_process_status(db)
+    ensure_defaults(db)
+    state = get_process_status(db)
+    auto_analyze = get_bool(db, "auto_analyze", False)
+    state["autoAnalyzeEnabled"] = auto_analyze
+    if auto_analyze and not state.get("active"):
+        s = get_settings()
+        interval_min = get_int(db, "match_analysis_interval_minutes", s.default_match_interval_minutes)
+        last_raw = get_value(db, "last_match_job_at", None)
+        if last_raw:
+            try:
+                lm = datetime.fromisoformat(str(last_raw).replace("Z", "+00:00"))
+                if lm.tzinfo is None:
+                    lm = lm.replace(tzinfo=timezone.utc)
+                delta_sec = int((datetime.now(timezone.utc) - lm).total_seconds())
+                wait_sec = max(0, interval_min * 60 - delta_sec)
+                state["waiting"] = wait_sec > 0
+                state["waitSeconds"] = wait_sec
+                if wait_sec > 0:
+                    state["message"] = f"Авто-анализ в ожидании, следующий запуск через ~{max(1, wait_sec // 60)} мин"
+                else:
+                    state["message"] = "Авто-анализ готов к следующему запуску"
+            except ValueError:
+                state["waiting"] = False
+        else:
+            state["waiting"] = False
+            state["message"] = "Авто-анализ готов к первому запуску"
+    elif not auto_analyze and not state.get("active"):
+        state["waiting"] = False
+        state["message"] = "Авто-анализ выключен в настройках"
+    return state
 
 
 @router.get("/process/logs")

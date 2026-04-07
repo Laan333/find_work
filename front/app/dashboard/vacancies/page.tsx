@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ApiError, fetchLlmStatus, fetchSearches, fetchVacancies, fetchVacancy, patchVacancy, postAnalyze } from '@/lib/api'
+import { ApiError, deleteVacancy, fetchLlmStatus, fetchSearches, fetchVacancies, fetchVacancy, patchVacancy, postAnalyze, postClearVacancies } from '@/lib/api'
 import type { SearchQuery, Vacancy } from '@/lib/types'
 import { Search, Filter, SortAsc, Star, Brain, Grid3X3, List } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -206,6 +206,30 @@ export default function VacanciesPage() {
     }
   }
 
+  const handleDeleteVacancy = async (vacancy: Vacancy) => {
+    if (!confirm(`Удалить вакансию "${vacancy.title}"?`)) return
+    try {
+      await deleteVacancy(vacancy.id)
+      setVacancies((prev) => prev.filter((v) => v.id !== vacancy.id))
+      if (selectedVacancy?.id === vacancy.id) setSelectedVacancy(null)
+      toast.success('Вакансия удалена')
+    } catch {
+      toast.error('Не удалось удалить вакансию')
+    }
+  }
+
+  const handleDeleteAllVacancies = async () => {
+    if (!confirm('Удалить ВСЕ вакансии из базы?')) return
+    try {
+      const res = await postClearVacancies()
+      setVacancies([])
+      setSelectedVacancy(null)
+      toast.success(`Удалено вакансий: ${res.deleted}`)
+    } catch {
+      toast.error('Не удалось удалить вакансии')
+    }
+  }
+
   const statusOptions = [
     { value: 'all', label: 'Все статусы' },
     { value: 'new', label: 'Новые' },
@@ -293,6 +317,9 @@ export default function VacanciesPage() {
           <Button variant="outline" size="sm" onClick={() => void loadVacancies(1, false)} disabled={loading}>
             Обновить
           </Button>
+          <Button variant="destructive" size="sm" onClick={() => void handleDeleteAllVacancies()}>
+            Удалить все
+          </Button>
 
           <div className="flex items-center gap-1 ml-auto border rounded-lg p-1">
             <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setViewMode('grid')}>
@@ -331,6 +358,7 @@ export default function VacanciesPage() {
               onGenerateCoverLetter={setCoverLetterVacancy}
               onToggleFavorite={handleToggleFavorite}
               onAnalyze={handleAnalyze}
+              onDelete={(v) => void handleDeleteVacancy(v)}
             />
           ))}
         </div>

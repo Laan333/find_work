@@ -108,6 +108,22 @@ export function Header({ title, subtitle }: HeaderProps) {
             </Badge>
           </Link>
         )}
+        {!processStatus.active && processStatus.autoAnalyzeEnabled && (
+          <Link href="/dashboard/processes">
+            <Badge variant="secondary" className="gap-1.5 cursor-pointer">
+              <Activity className="w-3.5 h-3.5" />
+              AI авто: {processStatus.waiting ? 'ожидание' : 'готов'}
+            </Badge>
+          </Link>
+        )}
+        {!processStatus.active && processStatus.autoAnalyzeEnabled === false && (
+          <Link href="/dashboard/processes">
+            <Badge variant="outline" className="gap-1.5 cursor-pointer">
+              <Activity className="w-3.5 h-3.5" />
+              AI авто: выключен
+            </Badge>
+          </Link>
+        )}
         <span className="text-xs text-muted-foreground hidden sm:block">
           Обновлено: {lastUpdate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
         </span>

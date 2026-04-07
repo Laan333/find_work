@@ -196,6 +196,20 @@ def patch_vacancy(
     return vacancy_to_dict(v)
 
 
+@router.delete("/{vacancy_id}")
+def delete_vacancy(
+    vacancy_id: UUID,
+    db: Session = Depends(get_db),
+    _t: str = Depends(verify_api_key),
+) -> dict[str, str]:
+    v = db.get(Vacancy, vacancy_id)
+    if v is None:
+        raise HTTPException(status_code=404, detail="Vacancy not found")
+    db.delete(v)
+    db.commit()
+    return {"ok": "true"}
+
+
 @router.post("/{vacancy_id}/cover-letter")
 def post_cover_letter(
     vacancy_id: UUID,

@@ -88,6 +88,11 @@ export async function patchVacancy(
   return parseJson(r)
 }
 
+export async function deleteVacancy(id: string): Promise<void> {
+  const r = await apiFetch(`/vacancies/${id}`, { method: 'DELETE' })
+  if (!r.ok) await parseJson(r)
+}
+
 export async function fetchVacancy(id: string): Promise<Vacancy> {
   const r = await apiFetch(`/vacancies/${id}`)
   return parseJson(r)
@@ -181,6 +186,9 @@ export type ProcessStatusDto = {
   progress?: number
   updatedAt?: string
   counters?: Record<string, number>
+  autoAnalyzeEnabled?: boolean
+  waiting?: boolean
+  waitSeconds?: number
 }
 
 export type ProcessLogEventDto = {

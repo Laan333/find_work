@@ -13,7 +13,8 @@ import {
   Users,
   Sparkles,
   FileText,
-  Brain
+  Brain,
+  Trash2
 } from 'lucide-react'
 import type { Vacancy } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -26,6 +27,7 @@ interface VacancyCardProps {
   onGenerateCoverLetter?: (vacancy: Vacancy) => void
   onToggleFavorite?: (vacancy: Vacancy) => void
   onViewDetails?: (vacancy: Vacancy) => void
+  onDelete?: (vacancy: Vacancy) => void
 }
 
 export function VacancyCard({
@@ -34,7 +36,8 @@ export function VacancyCard({
   onAnalyze,
   onGenerateCoverLetter,
   onToggleFavorite,
-  onViewDetails
+  onViewDetails,
+  onDelete
 }: VacancyCardProps) {
   const formatSalary = (salary?: Vacancy['salary']) => {
     if (!salary) return 'Не указана'
@@ -225,6 +228,15 @@ export function VacancyCard({
             <a href={vacancy.url} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="w-4 h-4" />
             </a>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive hover:text-destructive"
+            onClick={() => onDelete?.(vacancy)}
+            title="Удалить вакансию"
+          >
+            <Trash2 className="w-4 h-4" />
           </Button>
         </div>
       </CardContent>

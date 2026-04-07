@@ -11,6 +11,7 @@ export default function ProcessesPage() {
   const [status, setStatus] = useState<ProcessStatusDto>({ active: false })
   const [logs, setLogs] = useState<ProcessLogEventDto[]>([])
   const [filter, setFilter] = useState<'all' | 'sync' | 'ai_match'>('all')
+  const [quickFilter, setQuickFilter] = useState<'all' | 'waiting' | 'errors'>('all')
   const [loading, setLoading] = useState(true)
 
   const load = async () => {
@@ -45,9 +46,20 @@ export default function ProcessesPage() {
   }, [status.active])
 
   const filtered = useMemo(() => {
-    if (filter === 'all') return logs
-    return logs.filter((x) => x.processType === filter)
-  }, [filter, logs])
+    const byType = filter === 'all' ? logs : logs.filter((x) => x.processType === filter)
+    if (quickFilter === 'all') return byType
+    if (quickFilter === 'waiting') {
+      return byType.filter((x) => x.phase === 'waiting' || x.phase === 'rate_limited')
+    }
+    return byType.filter((x) => x.status === 'failed' || x.phase === 'error')
+  }, [filter, logs, quickFilter])
+
+  const statusBadgeVariant = (event: ProcessLogEventDto): 'default' | 'secondary' | 'destructive' | 'outline' => {
+    if (event.status === 'failed' || event.phase === 'error') return 'destructive'
+    if (event.phase === 'waiting' || event.phase === 'rate_limited') return 'outline'
+    if (event.status === 'completed') return 'secondary'
+    return 'default'
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -68,7 +80,16 @@ export default function ProcessesPage() {
                 <p className="text-muted-foreground">{status.message || 'Выполняется процесс...'}</p>
               </>
             ) : (
-              <p className="text-muted-foreground">Активных процессов нет.</p>
+              <div className="space-y-1">
+                <p className="text-muted-foreground">Активных процессов нет.</p>
+                <p className="text-xs text-muted-foreground">
+                  Авто-анализ: {status.autoAnalyzeEnabled ? 'включен' : 'выключен'}
+                  {status.autoAnalyzeEnabled && status.waiting && typeof status.waitSeconds === 'number'
+                    ? `, ожидание ~${Math.max(1, Math.floor(status.waitSeconds / 60))} мин`
+                    : ''}
+                </p>
+                {status.message && <p className="text-xs text-muted-foreground">{status.message}</p>}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -92,14 +113,41 @@ export default function ProcessesPage() {
           </Button>
         </div>
 
+        <div className="flex items-center gap-2">
+          <Button
+            variant={quickFilter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setQuickFilter('all')}
+          >
+            Все события
+          </Button>
+          <Button
+            variant={quickFilter === 'waiting' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setQuickFilter('waiting')}
+          >
+            Ожидание
+          </Button>
+          <Button
+            variant={quickFilter === 'errors' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setQuickFilter('errors')}
+          >
+            Ошибки
+          </Button>
+        </div>
+
         <div className="space-y-2">
           {filtered.map((e) => (
             <Card key={e.id} className="border-border/50">
               <CardContent className="p-3">
                 <div className="flex items-center gap-2 mb-1">
                   <Badge variant="outline">{e.processType === 'sync' ? 'Парсинг' : 'AI-анализ'}</Badge>
-                  <Badge variant={e.status === 'completed' ? 'secondary' : e.status === 'failed' ? 'destructive' : 'default'}>
+                  <Badge variant={statusBadgeVariant(e)}>
                     {e.status}
+                  </Badge>
+                  <Badge variant={e.phase === 'waiting' || e.phase === 'rate_limited' ? 'outline' : 'secondary'}>
+                    {e.phase}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
                     {new Date(e.ts).toLocaleString('ru-RU')}
@@ -108,6 +156,13 @@ export default function ProcessesPage() {
                 <div className="text-sm">{e.message}</div>
                 {typeof e.progress === 'number' && (
                   <div className="text-xs text-muted-foreground mt-1">Прогресс: {e.progress}%</div>
+                )}
+                {e.counters && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {Object.entries(e.counters)
+                      .map(([k, v]) => `${k}: ${v}`)
+                      .join(' · ')}
+                  </div>
                 )}
               </CardContent>
             </Card>

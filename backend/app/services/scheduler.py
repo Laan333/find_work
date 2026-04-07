@@ -12,6 +12,7 @@ from app.config import get_settings
 from app.database import SessionLocal
 from app.models import SyncTrigger
 from app.services.matching_job import run_scheduled_matching
+from app.services.process_events import emit_event
 from app.services.sync_service import run_full_sync
 from app.settings_service import ensure_defaults, get_bool, get_int, get_str, get_value, set_value
 
@@ -43,6 +44,15 @@ def _tick() -> None:
                 last_raw = get_value(db, "last_match_job_at", None)
                 now_utc = datetime.now(timezone.utc)
                 if last_raw is None:
+                    emit_event(
+                        db,
+                        process_type="ai_match",
+                        run_id="scheduler",
+                        phase="ready",
+                        status="running",
+                        message="Авто-анализ: первый запуск",
+                        progress=0,
+                    )
                     run_scheduled_matching(db)
                 else:
                     try:
@@ -51,9 +61,39 @@ def _tick() -> None:
                             lm = lm.replace(tzinfo=timezone.utc)
                         delta_min = (now_utc - lm).total_seconds() / 60.0
                         if delta_min >= interval_min:
+                            emit_event(
+                                db,
+                                process_type="ai_match",
+                                run_id="scheduler",
+                                phase="ready",
+                                status="running",
+                                message="Авто-анализ: интервал достигнут, запускаем пакет",
+                                progress=0,
+                            )
                             run_scheduled_matching(db)
+                        else:
+                            left = max(1, int(interval_min - delta_min))
+                            emit_event(
+                                db,
+                                process_type="ai_match",
+                                run_id="scheduler",
+                                phase="waiting",
+                                status="running",
+                                message=f"Авто-анализ в ожидании: ~{left} мин до следующего запуска",
+                                progress=0,
+                            )
                     except ValueError:
                         run_scheduled_matching(db)
+            else:
+                emit_event(
+                    db,
+                    process_type="ai_match",
+                    run_id="scheduler",
+                    phase="disabled",
+                    status="completed",
+                    message="Авто-анализ выключен (autoAnalyze=false)",
+                    progress=0,
+                )
         except Exception:
             logger.exception("Scheduler tick failed")
 
