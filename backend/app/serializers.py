@@ -81,6 +81,7 @@ def search_to_dict(s: SavedSearch) -> dict[str, Any]:
         "schedule": s.schedule,
         "isActive": s.is_active,
         "interval": s.interval_minutes,
+        "maxVacancies": s.max_vacancies,
         "lastRun": _iso(s.last_run_at),
         "nextRun": None,
         "createdAt": _iso(s.created_at) or "",

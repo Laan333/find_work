@@ -69,6 +69,7 @@ export interface SearchQuery {
   schedule?: string
   isActive: boolean
   interval: number // в минутах
+  maxVacancies?: number
   lastRun?: string
   nextRun?: string
   createdAt: string

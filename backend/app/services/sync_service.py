@@ -115,9 +115,7 @@ def run_full_sync(db: Session, *, trigger: SyncTrigger) -> SyncRun:
     s = get_settings()
     ensure_defaults(db)
 
-    max_per_search = get_int(db, "max_vacancies_per_search", 200)
-    per_page = min(100, max_per_search)
-    max_pages = max(1, (max_per_search + per_page - 1) // per_page)
+    fallback_max = get_int(db, "max_vacancies_per_search", 200)
     max_age = get_int(db, "vacancy_max_age_days", s.default_vacancy_max_age_days)
     fetch_detail = s.hh_fetch_detail
 
@@ -156,6 +154,9 @@ def run_full_sync(db: Session, *, trigger: SyncTrigger) -> SyncRun:
         if tg_progress_on:
             send_message(f"Парсинг вакансий запущен. Поисковых запросов: {len(searches)}")
         for idx, search in enumerate(searches, start=1):
+            max_per_search = int(search.max_vacancies or fallback_max)
+            per_page = min(100, max_per_search)
+            max_pages = max(1, (max_per_search + per_page - 1) // per_page)
             stats = sync_one_search(db, search, max_pages=max_pages, per_page=per_page, fetch_detail=fetch_detail)
             err = stats.get("error")
             if err:

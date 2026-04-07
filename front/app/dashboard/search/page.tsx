@@ -53,6 +53,7 @@ export default function SearchQueriesPage() {
     experience: '',
     employment: '',
     schedule: '',
+    maxVacancies: 200,
     interval: 60
   })
   const [editQuery, setEditQuery] = useState({
@@ -61,6 +62,7 @@ export default function SearchQueriesPage() {
     experience: '',
     employment: '',
     schedule: '',
+    maxVacancies: 200,
     interval: 60,
   })
 
@@ -135,6 +137,7 @@ export default function SearchQueriesPage() {
         experience: newQuery.experience || undefined,
         employment: newQuery.employment || undefined,
         schedule: newQuery.schedule || undefined,
+        maxVacancies: newQuery.maxVacancies,
         interval: newQuery.interval,
         isActive: true,
       })
@@ -146,6 +149,7 @@ export default function SearchQueriesPage() {
         experience: '',
         employment: '',
         schedule: '',
+        maxVacancies: 200,
         interval: 60,
       })
     } catch {
@@ -161,6 +165,7 @@ export default function SearchQueriesPage() {
       experience: query.experience || '',
       employment: query.employment || '',
       schedule: query.schedule || '',
+      maxVacancies: query.maxVacancies || 200,
       interval: query.interval,
     })
     setIsEditDialogOpen(true)
@@ -179,6 +184,7 @@ export default function SearchQueriesPage() {
         experience: editQuery.experience || null,
         employment: editQuery.employment || null,
         schedule: editQuery.schedule || null,
+        maxVacancies: editQuery.maxVacancies,
         interval: editQuery.interval,
       })
       setQueries((prev) => prev.map((q) => (q.id === editingId ? updated : q)))
@@ -218,6 +224,7 @@ export default function SearchQueriesPage() {
     { value: 720, label: 'Каждые 12 часов' },
     { value: 1440, label: 'Раз в день' },
   ]
+  const maxVacanciesOptions = [50, 100, 200, 300, 500, 800]
 
   const scheduleOptions = [
     { value: '', label: 'Любой формат' },
@@ -359,6 +366,25 @@ export default function SearchQueriesPage() {
                   </Select>
                 </div>
 
+                <div className="space-y-2">
+                  <Label>Кол-во вакансий за один запуск</Label>
+                  <Select
+                    value={newQuery.maxVacancies.toString()}
+                    onValueChange={(value) => setNewQuery((prev) => ({ ...prev, maxVacancies: parseInt(value) }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {maxVacanciesOptions.map((n) => (
+                        <SelectItem key={n} value={n.toString()}>
+                          {n} вакансий
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="text-xs text-muted-foreground">
                   Источник вакансий по умолчанию: <code className="text-foreground">hh</code> (поле{' '}
                   <code className="text-foreground">vacancySource</code> в API).
@@ -415,6 +441,9 @@ export default function SearchQueriesPage() {
                       <span className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
                         каждые {formatTime(query.interval)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        до {query.maxVacancies ?? 200} вакансий
                       </span>
                     </div>
                   </div>
@@ -592,6 +621,25 @@ export default function SearchQueriesPage() {
                     {intervalOptions.map((opt) => (
                       <SelectItem key={`edit-int-${opt.value}`} value={opt.value.toString()}>
                         {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Кол-во вакансий за один запуск</Label>
+                <Select
+                  value={editQuery.maxVacancies.toString()}
+                  onValueChange={(value) => setEditQuery((prev) => ({ ...prev, maxVacancies: parseInt(value) }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {maxVacanciesOptions.map((n) => (
+                      <SelectItem key={`edit-max-${n}`} value={n.toString()}>
+                        {n} вакансий
                       </SelectItem>
                     ))}
                   </SelectContent>

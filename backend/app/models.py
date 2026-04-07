@@ -125,6 +125,7 @@ class SavedSearch(Base):
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     interval_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
+    max_vacancies: Mapped[int] = mapped_column(Integer, nullable=False, default=200)
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     vacancies_found: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

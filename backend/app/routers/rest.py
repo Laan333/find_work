@@ -122,6 +122,7 @@ class SearchCreate(BaseModel):
     salary_to: int | None = Field(default=None, alias="salaryTo")
     is_active: bool = Field(default=True, alias="isActive")
     interval: int = Field(default=60, ge=1)
+    max_vacancies: int = Field(default=200, ge=1, le=1000, alias="maxVacancies")
     vacancy_source: str = Field(default="hh", alias="vacancySource")
 
     model_config = {"populate_by_name": True}
@@ -140,6 +141,7 @@ class SearchPatch(BaseModel):
     salary_to: int | None = Field(default=None, alias="salaryTo")
     is_active: bool | None = Field(default=None, alias="isActive")
     interval: int | None = Field(default=None, ge=1)
+    max_vacancies: int | None = Field(default=None, ge=1, le=1000, alias="maxVacancies")
     vacancy_source: str | None = Field(default=None, alias="vacancySource")
 
     model_config = {"populate_by_name": True}
@@ -228,6 +230,7 @@ def create_search(
         salary_to=body.salary_to,
         is_active=body.is_active,
         interval_minutes=body.interval,
+        max_vacancies=body.max_vacancies,
         vacancy_source=src_id,
         last_run_at=None,
         last_error=None,
@@ -275,6 +278,8 @@ def patch_search(
         s.is_active = data["is_active"]
     if "interval" in data and data["interval"] is not None:
         s.interval_minutes = data["interval"]
+    if "max_vacancies" in data and data["max_vacancies"] is not None:
+        s.max_vacancies = data["max_vacancies"]
     if "vacancy_source" in data and data["vacancy_source"] is not None:
         vs = str(data["vacancy_source"]).lower().strip()
         try:
@@ -302,7 +307,7 @@ def run_saved_search_sync(
 
     ensure_defaults(db)
     settings = get_settings()
-    max_per_search = get_int(db, "max_vacancies_per_search", 200)
+    max_per_search = int(s_row.max_vacancies or get_int(db, "max_vacancies_per_search", 200))
     per_page = min(100, max_per_search)
     max_pages = max(1, (max_per_search + per_page - 1) // per_page)
 

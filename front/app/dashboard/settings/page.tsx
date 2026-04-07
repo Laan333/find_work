@@ -23,7 +23,6 @@ import {
   Bell, 
   Database, 
   Brain, 
-  RefreshCw, 
   Shield,
   CheckCircle,
   AlertCircle,
@@ -93,9 +92,7 @@ export default function SettingsPage() {
   const handleSave = async () => {
     try {
       const payload: Record<string, unknown> = {
-        refreshInterval: settings.refreshInterval,
         autoAnalyze: settings.autoAnalyze,
-        maxVacanciesPerSearch: settings.maxVacanciesPerSearch,
         analyzeDelay: settings.analyzeDelay,
         matchAnalysisIntervalMinutes: settings.analyzeDelay,
         llmMinIntervalSeconds: settings.analyzeDelay * 60,
@@ -323,53 +320,6 @@ export default function SettingsPage() {
                 <p className="text-xs text-muted-foreground">
                   Минимальный интервал между запросами для соблюдения лимитов API
                 </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Search Settings */}
-          <Card className="border-border/50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <RefreshCw className="w-5 h-5 text-primary" />
-                Настройки поиска
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-3">
-                <Label>Интервал обновления по умолчанию</Label>
-                <Select 
-                  value={settings.refreshInterval.toString()}
-                  onValueChange={(value) => setSettings(prev => ({ ...prev, refreshInterval: parseInt(value) }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="30">30 минут</SelectItem>
-                    <SelectItem value="60">1 час</SelectItem>
-                    <SelectItem value="120">2 часа</SelectItem>
-                    <SelectItem value="360">6 часов</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-3">
-                <Label>Максимум вакансий за один поиск</Label>
-                <Select 
-                  value={settings.maxVacanciesPerSearch.toString()}
-                  onValueChange={(value) => setSettings(prev => ({ ...prev, maxVacanciesPerSearch: parseInt(value) }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="50">50 вакансий</SelectItem>
-                    <SelectItem value="100">100 вакансий</SelectItem>
-                    <SelectItem value="200">200 вакансий</SelectItem>
-                    <SelectItem value="500">500 вакансий</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </CardContent>
           </Card>
