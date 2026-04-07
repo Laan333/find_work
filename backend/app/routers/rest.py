@@ -342,13 +342,23 @@ def delete_search(
 
 
 def _gigachat_authorization_key_resolved(db: Session) -> str:
-    """Authorization Key из БД (новый ключ) или из env; legacy `gigachat_api_key`."""
+    """Authorization Key из env в приоритете, затем из БД (legacy fallback)."""
 
     s = get_settings()
     return (
-        get_str(db, "gigachat_authorization_key", "").strip()
+        (s.gigachat_authorization_key or "").strip()
+        or get_str(db, "gigachat_authorization_key", "").strip()
         or get_str(db, "gigachat_api_key", "").strip()
-        or (s.gigachat_authorization_key or "").strip()
+    )
+
+
+def _openai_api_key_resolved(db: Session) -> str:
+    """OpenAI key with env-first precedence."""
+
+    s = get_settings()
+    return (
+        (s.openai_api_key or "").strip()
+        or get_str(db, "openai_api_key", "").strip()
     )
 
 
@@ -356,7 +366,7 @@ def _settings_response(db: Session) -> dict[str, Any]:
     ensure_defaults(db)
     s = get_settings()
     gk = _gigachat_authorization_key_resolved(db)
-    ok = get_str(db, "openai_api_key", "") or s.openai_api_key
+    ok = _openai_api_key_resolved(db)
     match_interval = get_int(
         db,
         "match_analysis_interval_minutes",

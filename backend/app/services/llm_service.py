@@ -61,9 +61,12 @@ def _gigachat_authorization_key_from_db(db: Session) -> str:
 
 
 def _settings_for_gigachat(db: Session) -> Settings:
-    """Overlay dashboard Authorization Key on env settings."""
+    """Prefer env Authorization Key; fallback to dashboard-stored key."""
 
     s = get_settings()
+    env_key = (s.gigachat_authorization_key or "").strip()
+    if env_key:
+        return s
     db_key = _gigachat_authorization_key_from_db(db)
     if db_key:
         return s.model_copy(update={"gigachat_authorization_key": db_key})
