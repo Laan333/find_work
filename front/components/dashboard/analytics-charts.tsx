@@ -44,8 +44,8 @@ export function AnalyticsCharts({ analytics }: AnalyticsChartsProps) {
               <AreaChart data={analytics.vacanciesByDate}>
                 <defs>
                   <linearGradient id="colorVacancies" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0}/>
+                    <stop offset="5%" stopColor={COLORS[0]} stopOpacity={0.35}/>
+                    <stop offset="95%" stopColor={COLORS[0]} stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -62,7 +62,7 @@ export function AnalyticsCharts({ analytics }: AnalyticsChartsProps) {
                 <Area
                   type="monotone"
                   dataKey="count"
-                  stroke="hsl(var(--chart-1))"
+                  stroke={COLORS[0]}
                   fillOpacity={1}
                   fill="url(#colorVacancies)"
                   strokeWidth={2}

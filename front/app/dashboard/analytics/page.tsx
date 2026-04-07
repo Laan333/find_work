@@ -29,6 +29,15 @@ import {
 import { Briefcase, TrendingUp, Brain, Target, Banknote, Star } from 'lucide-react'
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))']
+const BRIGHT_COLORS = ['#60a5fa', '#34d399', '#fbbf24', '#a78bfa', '#f472b6']
+const AXIS_TICK = { fontSize: 12, fill: 'hsl(var(--foreground))' }
+const GRID_STROKE = 'hsl(var(--border))'
+const TOOLTIP_STYLE = {
+  backgroundColor: 'hsl(var(--card))',
+  border: '1px solid hsl(var(--border))',
+  borderRadius: '8px',
+  color: 'hsl(var(--foreground))',
+}
 
 const emptyAnalytics: Analytics = {
   totalVacancies: 0,
@@ -172,28 +181,22 @@ export default function AnalyticsPage() {
                   <AreaChart data={analytics.vacanciesByDate}>
                     <defs>
                       <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0}/>
+                        <stop offset="5%" stopColor={BRIGHT_COLORS[0]} stopOpacity={0.35}/>
+                        <stop offset="95%" stopColor={BRIGHT_COLORS[0]} stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
                     <XAxis 
                       dataKey="date" 
-                      tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                      tick={AXIS_TICK}
                       tickFormatter={(value) => new Date(value).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                     />
-                    <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
+                    <YAxis tick={AXIS_TICK} />
+                    <Tooltip contentStyle={TOOLTIP_STYLE} />
                     <Area
                       type="monotone"
                       dataKey="count"
-                      stroke="hsl(var(--chart-1))"
+                      stroke={BRIGHT_COLORS[0]}
                       fillOpacity={1}
                       fill="url(#colorCount)"
                       strokeWidth={2}
@@ -214,28 +217,21 @@ export default function AnalyticsPage() {
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={salaryData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} horizontal={false} />
                     <XAxis 
                       type="number" 
-                      tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                      tick={AXIS_TICK}
                       tickFormatter={(value) => `${value / 1000}K`}
                     />
                     <YAxis 
                       type="category" 
                       dataKey="title" 
                       width={100}
-                      tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                      tick={{ fontSize: 11, fill: 'hsl(var(--foreground))' }}
                     />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                      formatter={(value: number) => `${value.toLocaleString('ru-RU')} ₽`}
-                    />
-                    <Bar dataKey="from" fill="hsl(var(--chart-2))" name="От" radius={[0, 4, 4, 0]} />
-                    <Bar dataKey="to" fill="hsl(var(--chart-1))" name="До" radius={[0, 4, 4, 0]} />
+                    <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value: number) => `${value.toLocaleString('ru-RU')} ₽`} />
+                    <Bar dataKey="from" fill={BRIGHT_COLORS[1]} name="От" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="to" fill={BRIGHT_COLORS[0]} name="До" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -254,17 +250,17 @@ export default function AnalyticsPage() {
               <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={skillsRadarData}>
-                    <PolarGrid stroke="hsl(var(--border))" />
+                    <PolarGrid stroke={GRID_STROKE} />
                     <PolarAngleAxis 
                       dataKey="skill" 
-                      tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                      tick={{ fontSize: 11, fill: 'hsl(var(--foreground))' }}
                     />
-                    <PolarRadiusAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                    <PolarRadiusAxis tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }} />
                     <Radar
                       name="Количество"
                       dataKey="value"
-                      stroke="hsl(var(--chart-1))"
-                      fill="hsl(var(--chart-1))"
+                      stroke={BRIGHT_COLORS[3]}
+                      fill={BRIGHT_COLORS[3]}
                       fillOpacity={0.3}
                     />
                   </RadarChart>
@@ -297,7 +293,7 @@ export default function AnalyticsPage() {
                       >
                         <div
                           className="w-3 h-3 rounded-full shrink-0"
-                          style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                          style={{ backgroundColor: BRIGHT_COLORS[i % BRIGHT_COLORS.length] }}
                         />
                         <span className="font-medium truncate">{src.source}</span>
                         <Badge variant="secondary" className="ml-auto shrink-0">
@@ -332,16 +328,10 @@ export default function AnalyticsPage() {
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                     >
                       {statusData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={BRIGHT_COLORS[index % BRIGHT_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
+                    <Tooltip contentStyle={TOOLTIP_STYLE} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -358,22 +348,16 @@ export default function AnalyticsPage() {
             <div className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={analytics.vacanciesByExperience}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} vertical={false} />
                   <XAxis 
                     dataKey="experience" 
-                    tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                    tick={AXIS_TICK}
                   />
-                  <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                  />
+                  <YAxis tick={AXIS_TICK} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} />
                   <Bar 
                     dataKey="count" 
-                    fill="hsl(var(--chart-2))" 
+                    fill={BRIGHT_COLORS[2]} 
                     radius={[4, 4, 0, 0]}
                     name="Вакансий"
                   />

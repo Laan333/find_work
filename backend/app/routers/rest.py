@@ -357,6 +357,11 @@ def _settings_response(db: Session) -> dict[str, Any]:
     s = get_settings()
     gk = _gigachat_authorization_key_resolved(db)
     ok = get_str(db, "openai_api_key", "") or s.openai_api_key
+    match_interval = get_int(
+        db,
+        "match_analysis_interval_minutes",
+        s.default_match_interval_minutes,
+    )
     return {
         "apiKeys": {
             "gigachatAuthorizationKey": _mask_secret(gk),
@@ -366,7 +371,7 @@ def _settings_response(db: Session) -> dict[str, Any]:
         "refreshInterval": get_int(db, "refresh_interval", 60),
         "autoAnalyze": get_bool(db, "auto_analyze", False),
         "maxVacanciesPerSearch": get_int(db, "max_vacancies_per_search", 200),
-        "analyzeDelay": get_int(db, "analyze_delay_minutes", 3),
+        "analyzeDelay": match_interval,
         "notifications": {
             "email": False,
             "browser": get_bool(db, "browser_notifications", False),
@@ -376,11 +381,7 @@ def _settings_response(db: Session) -> dict[str, Any]:
         "notifyOnHighMatch": get_bool(db, "notify_on_high_match", True),
         "highMatchThreshold": get_int(db, "high_match_threshold", s.default_high_match_threshold),
         "telegramEnabled": get_bool(db, "telegram_enabled", False),
-        "matchAnalysisIntervalMinutes": get_int(
-            db,
-            "match_analysis_interval_minutes",
-            s.default_match_interval_minutes,
-        ),
+        "matchAnalysisIntervalMinutes": match_interval,
         "llmMinIntervalSeconds": get_int(db, "llm_min_interval_seconds", s.default_llm_min_interval_seconds),
         "hhDailySyncTime": get_str(db, "hh_daily_sync_time", s.default_hh_sync_time),
         "hhDailySyncTimezone": get_str(db, "hh_daily_sync_timezone", s.default_hh_sync_timezone),
@@ -409,6 +410,16 @@ def patch_settings(
         gc_val = gc_new if (gc_new is not None and gc_new != "") else gc_old
         if gc_val is not None and gc_val != "":
             set_value(db, "gigachat_authorization_key", gc_val)
+    delay_minutes = raw.get("analyze_delay_minutes")
+    if delay_minutes is not None:
+        try:
+            dm = max(1, int(delay_minutes))
+            # Backward compatible alias from legacy UI field.
+            raw["match_analysis_interval_minutes"] = dm
+            raw["llm_min_interval_seconds"] = dm * 60
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Invalid analyzeDelay") from None
+
     key_map = {
         "openai_api_key": "openai_api_key",
         "refresh_interval": "refresh_interval",
