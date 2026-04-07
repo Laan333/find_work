@@ -178,6 +178,33 @@ export async function putResume(body: Record<string, unknown>): Promise<Resume> 
   return parseJson(r)
 }
 
+export type ResumeUploadResponse = {
+  rawText: string
+  fileName: string
+  warnings: string[]
+}
+
+export async function postResumeUpload(file: File): Promise<ResumeUploadResponse> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const key = getStoredApiKey()
+  const headers = new Headers()
+  if (key) headers.set('X-API-Key', key)
+  const url = `${API_BASE}/resume/upload`
+  const r = await fetch(url, { method: 'POST', headers, body: fd })
+  const text = await r.text()
+  if (!r.ok) {
+    let body: unknown = text
+    try {
+      body = text ? JSON.parse(text) : null
+    } catch {
+      /* keep text */
+    }
+    throw new ApiError(r.status, r.statusText, body)
+  }
+  return text ? (JSON.parse(text) as ResumeUploadResponse) : { rawText: '', fileName: '', warnings: [] }
+}
+
 export async function fetchAnalytics(): Promise<Analytics> {
   const r = await apiFetch('/analytics')
   return parseJson(r)

@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115.0",
+  "python-multipart>=0.0.9",
   "uvicorn[standard]>=0.32.0",
   "sqlalchemy>=2.0.36",
   "psycopg[binary]>=3.2.0",
@@ -20,6 +21,8 @@ dependencies = [
   "apscheduler>=3.10.4",
   "orjson>=3.10.0",
   "json-repair>=0.30.0",
+  "pypdf>=5.0.0",
+  "python-docx>=1.1.0",
 ]
 
 [tool.setuptools.packages.find]

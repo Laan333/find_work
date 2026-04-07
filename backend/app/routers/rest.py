@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func
 from sqlalchemy.orm import Session
@@ -427,6 +427,39 @@ def put_resume(
     db.commit()
     db.refresh(r)
     return resume_to_dict(r)
+
+
+@router.post("/resume/upload")
+async def upload_resume_file(
+    file: UploadFile = File(...),
+    _t: str = Depends(verify_api_key),
+) -> dict[str, Any]:
+    """Extract plain text from .txt, .pdf, or .docx for the resume ``rawText`` field."""
+
+    from app.services.resume_file_parse import MAX_RESUME_UPLOAD_BYTES, extract_resume_text
+
+    raw_name = file.filename or "upload.txt"
+    data = await file.read()
+    if len(data) > MAX_RESUME_UPLOAD_BYTES:
+        mb = MAX_RESUME_UPLOAD_BYTES // (1024 * 1024)
+        raise HTTPException(status_code=413, detail=f"File too large (max {mb} MB)")
+    try:
+        text, warnings = extract_resume_text(raw_name, data)
+    except ValueError as e:
+        code = str(e)
+        if code == "unsupported_format":
+            raise HTTPException(
+                status_code=400,
+                detail="Unsupported file type. Use .txt, .pdf, or .docx",
+            ) from e
+        if code == "file_too_large":
+            mb = MAX_RESUME_UPLOAD_BYTES // (1024 * 1024)
+            raise HTTPException(status_code=413, detail=f"File too large (max {mb} MB)") from e
+        raise HTTPException(
+            status_code=400,
+            detail="Could not read file. It may be corrupted or password-protected.",
+        ) from e
+    return {"rawText": text, "fileName": raw_name, "warnings": warnings}
 
 
 @router.post("/sync")

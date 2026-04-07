@@ -3,6 +3,7 @@ server {
     server_name ${NGINX_SERVER_NAMES};
 
     location /api/ {
+        client_max_body_size 15m;
         proxy_pass http://api:8000/api/;
         proxy_http_version 1.1;
         # $http_host = Host как у клиента (с нестандартным портом :8010), иначе редиректы API теряют порт → CORS/preflight ломаются

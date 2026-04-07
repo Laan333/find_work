@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { toast } from 'sonner'
 import { Header } from '@/components/dashboard/header'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { SafeMarkdown } from '@/components/safe-markdown'
-import { fetchResume, putResume } from '@/lib/api'
+import { ApiError, fetchResume, postResumeUpload, putResume } from '@/lib/api'
 import type { Resume } from '@/lib/types'
 import { 
   FileText, 
@@ -35,6 +35,10 @@ import {
   CheckCircle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+const UPLOAD_ACCEPT = '.pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain'
+
+const ALLOWED_EXT = new Set(['.pdf', '.docx', '.txt'])
 
 const emptyResume: Resume = {
   id: '',
@@ -73,6 +77,10 @@ export default function ResumePage() {
   const [newSkill, setNewSkill] = useState('')
   const [isSaved, setIsSaved] = useState(false)
   const [fullResumeOpen, setFullResumeOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('edit')
+  const [uploadBusy, setUploadBusy] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     void (async () => {
@@ -125,6 +133,41 @@ export default function ResumePage() {
     }))
   }
 
+  const ingestUploadedFile = useCallback(async (file: File) => {
+    const dot = file.name.lastIndexOf('.')
+    const ext = dot >= 0 ? file.name.slice(dot).toLowerCase() : ''
+    if (!ALLOWED_EXT.has(ext)) {
+      toast.error('Нужен файл PDF, DOCX или TXT')
+      return
+    }
+    setUploadBusy(true)
+    try {
+      const res = await postResumeUpload(file)
+      setResume((prev) => ({ ...prev, rawText: res.rawText }))
+      for (const w of res.warnings) {
+        toast.warning(w)
+      }
+      if (res.warnings.length === 0) {
+        toast.success(`Текст из «${res.fileName}» подставлен — проверьте черновик и нажмите «Сохранить»`)
+      } else {
+        toast.message('Проверьте черновик и нажмите «Сохранить»')
+      }
+      setActiveTab('edit')
+    } catch (e) {
+      if (e instanceof ApiError) {
+        const detail =
+          e.body && typeof e.body === 'object' && e.body !== null && 'detail' in e.body
+            ? String((e.body as { detail?: unknown }).detail)
+            : e.message
+        toast.error(detail || `Ошибка ${e.status}`)
+      } else {
+        toast.error('Не удалось загрузить файл')
+      }
+    } finally {
+      setUploadBusy(false)
+    }
+  }, [])
+
   return (
     <div className="flex flex-col h-full">
       <Header 
@@ -133,7 +176,7 @@ export default function ResumePage() {
       />
       
       <div className="flex-1 p-6 overflow-auto">
-        <Tabs defaultValue="edit" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <div className="flex items-center justify-between">
             <TabsList>
               <TabsTrigger value="edit">Редактирование</TabsTrigger>
@@ -350,6 +393,26 @@ export default function ResumePage() {
                   />
                 </CardContent>
               </Card>
+
+              <Card className="border-border/50 lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="w-5 h-5 text-primary" />
+                    Текст из файла (черновик)
+                  </CardTitle>
+                  <CardDescription>
+                    Сюда попадает текст из PDF / DOCX / TXT; используется в полном резюме и для LLM
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    value={resume.rawText}
+                    onChange={(e) => setResume((prev) => ({ ...prev, rawText: e.target.value }))}
+                    className="min-h-[200px] font-mono text-sm"
+                    placeholder="Загрузите файл на вкладке «Загрузить файл» или вставьте текст вручную…"
+                  />
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
@@ -420,20 +483,64 @@ export default function ResumePage() {
               <CardHeader>
                 <CardTitle>Загрузить резюме из файла</CardTitle>
                 <CardDescription>
-                  Поддерживаются форматы: PDF, DOCX, TXT
+                  Поддерживаются форматы: PDF, DOCX, TXT (до ~10 МБ)
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="border-2 border-dashed border-border rounded-lg p-12 text-center">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={UPLOAD_ACCEPT}
+                  className="sr-only"
+                  disabled={uploadBusy}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    e.target.value = ''
+                    if (f) void ingestUploadedFile(f)
+                  }}
+                />
+                <div
+                  onDragEnter={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setDragOver(true)
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setDragOver(true)
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setDragOver(false)
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setDragOver(false)
+                    const f = e.dataTransfer.files?.[0]
+                    if (f) void ingestUploadedFile(f)
+                  }}
+                  className={cn(
+                    'border-2 border-dashed rounded-lg p-12 text-center transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    dragOver ? 'border-primary bg-primary/5' : 'border-border',
+                  )}
+                  onClick={() => !uploadBusy && fileInputRef.current?.click()}
+                >
                   <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-lg font-medium mb-2">
-                    Перетащите файл сюда
-                  </p>
-                  <p className="text-muted-foreground mb-4">
-                    или нажмите для выбора
-                  </p>
-                  <Button variant="outline">
-                    Выбрать файл
+                  <p className="text-lg font-medium mb-2">Перетащите файл сюда</p>
+                  <p className="text-muted-foreground mb-4">или нажмите для выбора</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploadBusy}
+                    onClick={(ev) => {
+                      ev.stopPropagation()
+                      fileInputRef.current?.click()
+                    }}
+                  >
+                    {uploadBusy ? 'Обработка…' : 'Выбрать файл'}
                   </Button>
                 </div>
               </CardContent>
