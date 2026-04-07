@@ -35,7 +35,8 @@ import {
   Clock, 
   MapPin,
   Briefcase,
-  RefreshCw
+  RefreshCw,
+  Laptop
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -51,6 +52,7 @@ export default function SearchQueriesPage() {
     location: '',
     experience: '',
     employment: '',
+    schedule: '',
     interval: 60
   })
   const [editQuery, setEditQuery] = useState({
@@ -58,6 +60,7 @@ export default function SearchQueriesPage() {
     location: '',
     experience: '',
     employment: '',
+    schedule: '',
     interval: 60,
   })
 
@@ -131,6 +134,7 @@ export default function SearchQueriesPage() {
         location: newQuery.location || undefined,
         experience: newQuery.experience || undefined,
         employment: newQuery.employment || undefined,
+        schedule: newQuery.schedule || undefined,
         interval: newQuery.interval,
         isActive: true,
       })
@@ -141,6 +145,7 @@ export default function SearchQueriesPage() {
         location: '',
         experience: '',
         employment: '',
+        schedule: '',
         interval: 60,
       })
     } catch {
@@ -155,6 +160,7 @@ export default function SearchQueriesPage() {
       location: query.location || '',
       experience: query.experience || '',
       employment: query.employment || '',
+      schedule: query.schedule || '',
       interval: query.interval,
     })
     setIsEditDialogOpen(true)
@@ -172,6 +178,7 @@ export default function SearchQueriesPage() {
         location: editQuery.location || null,
         experience: editQuery.experience || null,
         employment: editQuery.employment || null,
+        schedule: editQuery.schedule || null,
         interval: editQuery.interval,
       })
       setQueries((prev) => prev.map((q) => (q.id === editingId ? updated : q)))
@@ -210,6 +217,15 @@ export default function SearchQueriesPage() {
     { value: 360, label: 'Каждые 6 часов' },
     { value: 720, label: 'Каждые 12 часов' },
     { value: 1440, label: 'Раз в день' },
+  ]
+
+  const scheduleOptions = [
+    { value: '', label: 'Любой формат' },
+    { value: 'remote', label: 'Удаленно' },
+    { value: 'fullDay', label: 'Полный день' },
+    { value: 'shift', label: 'Сменный график' },
+    { value: 'flexible', label: 'Гибкий график' },
+    { value: 'flyInFlyOut', label: 'Вахтовый метод' },
   ]
 
   return (
@@ -304,6 +320,27 @@ export default function SearchQueriesPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label>Формат работы</Label>
+                  <Select
+                    value={newQuery.schedule || ANY}
+                    onValueChange={(value) =>
+                      setNewQuery((prev) => ({ ...prev, schedule: value === ANY ? '' : value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {scheduleOptions.map((opt) => (
+                        <SelectItem key={opt.value || ANY} value={opt.value || ANY}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
                   <Label>Интервал обновления</Label>
                   <Select 
                     value={newQuery.interval.toString()}
@@ -367,6 +404,12 @@ export default function SearchQueriesPage() {
                         <span className="flex items-center gap-1">
                           <Briefcase className="w-4 h-4" />
                           {query.experience}
+                        </span>
+                      )}
+                      {query.schedule && (
+                        <span className="flex items-center gap-1">
+                          <Laptop className="w-4 h-4" />
+                          {query.schedule}
                         </span>
                       )}
                       <span className="flex items-center gap-1">
@@ -513,6 +556,27 @@ export default function SearchQueriesPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Формат работы</Label>
+                <Select
+                  value={editQuery.schedule || ANY}
+                  onValueChange={(value) =>
+                    setEditQuery((prev) => ({ ...prev, schedule: value === ANY ? '' : value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {scheduleOptions.map((opt) => (
+                      <SelectItem key={`edit-schedule-${opt.value || ANY}`} value={opt.value || ANY}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
