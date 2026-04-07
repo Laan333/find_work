@@ -10,7 +10,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import or_
+from sqlalchemy import String, or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -106,7 +106,7 @@ def list_vacancies(
                     Vacancy.description_md.ilike(term),
                     Vacancy.requirements_md.ilike(term),
                     Vacancy.responsibilities_md.ilike(term),
-                    Vacancy.skills.cast(str).ilike(term),
+                    Vacancy.skills.cast(String).ilike(term),
                 )
             )
     total = stmt.count()
