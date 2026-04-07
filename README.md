@@ -62,6 +62,16 @@ find_work/
 
 Миграции БД выполняются при старте контейнера API (`alembic upgrade head` в entrypoint).
 
+### Контейнер `api` сразу выходит с кодом 1
+
+Чаще всего миграции не могут подключиться к PostgreSQL. В **`.env` не задавайте `DATABASE_URL` с `localhost` для сценария Docker** — внутри сети Compose хост БД — сервис `db`. В текущем `docker-compose.yml` URL для API собирается автоматически из `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB`.
+
+Просмотр ошибки:
+
+```bash
+docker compose logs api
+```
+
 ## Доступ из интернета
 
 1. В **`.env`** укажите реальный публичный адрес:

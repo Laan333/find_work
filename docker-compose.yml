@@ -25,7 +25,8 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://findwork:findwork@db:5432/findwork}
+      # Внутри сети Compose хост БД — всегда `db`. Не подставляем DATABASE_URL из .env (там часто localhost).
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-findwork}:${POSTGRES_PASSWORD:-findwork}@db:5432/${POSTGRES_DB:-findwork}
       ADMIN_API_KEYS: ${ADMIN_API_KEYS:-change-me}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8080}
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
