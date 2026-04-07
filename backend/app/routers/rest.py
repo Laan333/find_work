@@ -621,9 +621,16 @@ def sync_logs(
 
 @router.post("/data/clear-vacancies")
 def clear_all_vacancies(db: Session = Depends(get_db), _t: str = Depends(verify_api_key)) -> dict[str, int]:
-    """Delete all vacancies; related rows cascade (analyses, cover letters, notifications)."""
+    """Delete all vacancies and reset saved search counters."""
 
     r = db.execute(delete(Vacancy))
+    db.query(SavedSearch).update(
+        {
+            SavedSearch.vacancies_found: 0,
+            SavedSearch.last_error: None,
+        },
+        synchronize_session=False,
+    )
     db.commit()
     return {"deleted": int(r.rowcount or 0)}
 
