@@ -1,0 +1,71 @@
+# --- Secrets & local env ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+
+# --- Node / Next.js (front/) ---
+front/node_modules/
+front/.next/
+front/out/
+front/.turbo/
+front/*.tsbuildinfo
+
+# --- Logs & dumps ---
+*.log
+logs/
+*.sql.gz
+dump.rdb
+
+# --- SSL / certs (keep .gitkeep only) ---
+nginx/certs/*
+!nginx/certs/.gitkeep
+
+# --- OS & editors ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# --- Docker (optional local overrides) ---
+docker-compose.override.yml
+
+# --- Misc ---
+*.bak
+*.tmp
+.cache/
