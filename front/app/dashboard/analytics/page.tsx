@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Header } from '@/components/dashboard/header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ApiError, fetchAnalytics, fetchVacancies } from '@/lib/api'
+import { ApiError, fetchAnalytics, fetchSettings, fetchVacancies } from '@/lib/api'
 import type { Analytics, Vacancy } from '@/lib/types'
 import {
   BarChart,
@@ -17,19 +17,16 @@ import {
   PieChart,
   Pie,
   Cell,
-  LineChart,
-  Line,
   CartesianGrid,
   AreaChart,
   Area,
-  Legend,
   RadarChart,
   Radar,
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis
 } from 'recharts'
-import { Briefcase, TrendingUp, Brain, Target, Banknote, Clock } from 'lucide-react'
+import { Briefcase, TrendingUp, Brain, Target, Banknote, Star } from 'lucide-react'
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))']
 
@@ -38,6 +35,7 @@ const emptyAnalytics: Analytics = {
   newToday: 0,
   analyzed: 0,
   applied: 0,
+  favorites: 0,
   avgSalary: 0,
   topSkills: [],
   vacanciesByDate: [],
@@ -48,6 +46,7 @@ const emptyAnalytics: Analytics = {
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<Analytics>(emptyAnalytics)
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
+  const [highMatchThreshold, setHighMatchThreshold] = useState(70)
 
   useEffect(() => {
     const load = async () => {
@@ -58,15 +57,25 @@ export default function AnalyticsPage() {
       } catch (e) {
         if (e instanceof ApiError) toast.error(`Аналитика: ${e.status}`)
       }
+      try {
+        const s = await fetchSettings()
+        const t = Number(s.highMatchThreshold)
+        if (!Number.isNaN(t)) setHighMatchThreshold(t)
+      } catch {
+        /* порог по умолчанию 70 */
+      }
     }
     void load()
   }, [])
 
-  // Данные для радарного графика навыков
-  const skillsRadarData = analytics.topSkills.slice(0, 6).map(s => ({
+  const topSlice = analytics.topSkills.slice(0, 6)
+  const maxSkillCount = Math.max(0, ...topSlice.map((s) => s.count))
+  const radarFullMark = maxSkillCount < 1 ? 1 : Math.ceil(maxSkillCount * 1.1) || maxSkillCount
+
+  const skillsRadarData = topSlice.map((s) => ({
     skill: s.skill,
     value: s.count,
-    fullMark: 250
+    fullMark: radarFullMark,
   }))
 
   // Данные по зарплатам
@@ -108,23 +117,23 @@ export default function AnalyticsPage() {
       color: 'text-chart-2'
     },
     {
-      title: 'Совпадений >70%',
-      value: vacancies.filter(v => (v.matchScore || 0) >= 70).length,
+      title: `Совпадений ≥${highMatchThreshold}%`,
+      value: vacancies.filter((v) => (v.matchScore || 0) >= highMatchThreshold).length,
       icon: Target,
-      color: 'text-chart-3'
+      color: 'text-chart-3',
     },
     {
       title: 'Средняя зарплата',
-      value: `${(analytics.avgSalary / 1000).toFixed(0)}K`,
+      value: analytics.avgSalary > 0 ? `${(analytics.avgSalary / 1000).toFixed(0)}K` : '—',
       icon: Banknote,
-      color: 'text-chart-4'
+      color: 'text-chart-4',
     },
     {
-      title: 'Среднее время отклика',
-      value: '2.5 дня',
-      icon: Clock,
-      color: 'text-chart-5'
-    }
+      title: 'В избранном',
+      value: analytics.favorites ?? 0,
+      icon: Star,
+      color: 'text-chart-5',
+    },
   ]
 
   return (
@@ -277,14 +286,27 @@ export default function AnalyticsPage() {
                     <div className="text-xs text-muted-foreground mt-1">вакансий</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 px-4 py-2 bg-muted rounded-lg">
-                  <div className="w-3 h-3 rounded-full bg-primary" />
-                  <span className="font-medium">hh.ru</span>
-                  <Badge variant="secondary">{analytics.totalVacancies}</Badge>
+                <div className="flex flex-col gap-2 w-full max-w-xs">
+                  {analytics.vacanciesBySource.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center">Нет данных по источникам</p>
+                  ) : (
+                    analytics.vacanciesBySource.map((src, i) => (
+                      <div
+                        key={src.source}
+                        className="flex items-center gap-3 px-4 py-2 bg-muted rounded-lg"
+                      >
+                        <div
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                        />
+                        <span className="font-medium truncate">{src.source}</span>
+                        <Badge variant="secondary" className="ml-auto shrink-0">
+                          {src.count}
+                        </Badge>
+                      </div>
+                    ))
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-4 text-center">
-                  Бесплатный API HeadHunter
-                </p>
               </div>
             </CardContent>
           </Card>

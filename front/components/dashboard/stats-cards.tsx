@@ -14,49 +14,39 @@ export function StatsCards({ analytics }: StatsCardsProps) {
     {
       title: 'Всего вакансий',
       value: analytics.totalVacancies,
-      change: '+12%',
-      changeType: 'positive' as const,
       icon: Briefcase,
-      color: 'text-primary'
+      color: 'text-primary',
     },
     {
       title: 'Новых сегодня',
       value: analytics.newToday,
-      change: '+23',
-      changeType: 'positive' as const,
       icon: TrendingUp,
-      color: 'text-chart-1'
+      color: 'text-chart-1',
     },
     {
       title: 'Проанализировано',
       value: analytics.analyzed,
-      change: '68%',
-      changeType: 'neutral' as const,
       icon: Brain,
-      color: 'text-chart-2'
+      color: 'text-chart-2',
     },
     {
       title: 'Откликов',
       value: analytics.applied,
-      change: '+3',
-      changeType: 'positive' as const,
       icon: Send,
-      color: 'text-chart-3'
+      color: 'text-chart-3',
     },
     {
       title: 'Средняя зарплата',
-      value: `${(analytics.avgSalary / 1000).toFixed(0)}K`,
-      change: '+5%',
-      changeType: 'positive' as const,
+      value: analytics.avgSalary > 0 ? `${(analytics.avgSalary / 1000).toFixed(0)}K` : '—',
       icon: Banknote,
-      color: 'text-chart-4'
+      color: 'text-chart-4',
     },
     {
       title: 'В избранном',
-      value: 12,
+      value: analytics.favorites ?? 0,
       icon: Star,
-      color: 'text-chart-5'
-    }
+      color: 'text-chart-5',
+    },
   ]
 
   return (
@@ -68,15 +58,6 @@ export function StatsCards({ analytics }: StatsCardsProps) {
               <div className={cn("w-10 h-10 rounded-lg bg-muted flex items-center justify-center", stat.color)}>
                 <stat.icon className="w-5 h-5" />
               </div>
-              {stat.change && (
-                <span className={cn(
-                  "text-xs font-medium px-2 py-0.5 rounded-full",
-                  stat.changeType === 'positive' && "bg-primary/10 text-primary",
-                  stat.changeType === 'neutral' && "bg-muted text-muted-foreground"
-                )}>
-                  {stat.change}
-                </span>
-              )}
             </div>
             <div className="text-2xl font-bold text-foreground">{stat.value}</div>
             <div className="text-xs text-muted-foreground mt-1">{stat.title}</div>

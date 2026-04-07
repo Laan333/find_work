@@ -71,7 +71,7 @@ export function SearchQueriesCard({ queries, onToggleActive }: SearchQueriesCard
                   {query.vacanciesFound} вакансий
                 </Badge>
                 <Badge variant="outline" className="text-xs">
-                  hh.ru
+                  {query.vacancySource?.trim() || '—'}
                 </Badge>
               </div>
               <Badge 

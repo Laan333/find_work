@@ -21,6 +21,9 @@ from app.services.llm_service import assert_llm_slot
 
 logger = logging.getLogger(__name__)
 
+# Совпадает с верхней границей «макс. вакансий на поиск» в настройках (UI до 500).
+MAX_VACANCIES_PAGE_SIZE = 500
+
 router = APIRouter(prefix="/vacancies", tags=["vacancies"])
 
 
@@ -76,7 +79,7 @@ def list_vacancies(
     status: VacancyStatus | None = None,
     favorite_only: bool = Query(default=False, alias="favoriteOnly"),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100, alias="pageSize"),
+    page_size: int = Query(default=20, ge=1, le=MAX_VACANCIES_PAGE_SIZE, alias="pageSize"),
 ) -> dict[str, Any]:
     """Paginated vacancy list."""
 

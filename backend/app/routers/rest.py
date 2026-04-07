@@ -11,7 +11,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import func
+from sqlalchemy import delete, func
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -453,11 +453,21 @@ def sync_logs(
     return out
 
 
+@router.post("/data/clear-vacancies")
+def clear_all_vacancies(db: Session = Depends(get_db), _t: str = Depends(verify_api_key)) -> dict[str, int]:
+    """Delete all vacancies; related rows cascade (analyses, cover letters, notifications)."""
+
+    r = db.execute(delete(Vacancy))
+    db.commit()
+    return {"deleted": int(r.rowcount or 0)}
+
+
 @router.get("/analytics")
 def analytics(db: Session = Depends(get_db), _t: str = Depends(verify_api_key)) -> dict[str, Any]:
     total = db.query(func.count(Vacancy.id)).scalar() or 0
     analyzed = db.query(func.count(Vacancy.id)).filter(Vacancy.is_analyzed.is_(True)).scalar() or 0
     applied = db.query(func.count(Vacancy.id)).filter(Vacancy.status == VacancyStatus.applied).scalar() or 0
+    favorites = db.query(func.count(Vacancy.id)).filter(Vacancy.is_favorite.is_(True)).scalar() or 0
 
     from datetime import timedelta
 
@@ -499,6 +509,7 @@ def analytics(db: Session = Depends(get_db), _t: str = Depends(verify_api_key)) 
         "newToday": new_today,
         "analyzed": analyzed,
         "applied": applied,
+        "favorites": favorites,
         "avgSalary": avg_salary,
         "topSkills": top_skills,
         "vacanciesByDate": vacancies_by_date,

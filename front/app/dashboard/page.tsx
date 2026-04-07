@@ -15,6 +15,7 @@ const emptyAnalytics: Analytics = {
   newToday: 0,
   analyzed: 0,
   applied: 0,
+  favorites: 0,
   avgSalary: 0,
   topSkills: [],
   vacanciesByDate: [],

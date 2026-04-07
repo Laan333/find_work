@@ -32,7 +32,7 @@ import {
   TestTube
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { fetchSettings, patchSettings } from '@/lib/api'
+import { ApiError, fetchLlmStatus, fetchSettings, patchSettings, postClearVacancies } from '@/lib/api'
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
@@ -118,19 +118,34 @@ export default function SettingsPage() {
     }
   }
 
-  const testApiKey = async (service: string) => {
-    setTestResults(prev => ({ ...prev, [service]: null }))
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    // Имитация проверки
-    const success = Math.random() > 0.3
-    setTestResults(prev => ({ ...prev, [service]: success ? 'success' : 'error' }))
+  const testApiKey = async (service: 'gigachat' | 'openai') => {
+    setTestResults((prev) => ({ ...prev, [service]: null }))
+    try {
+      const st = await fetchLlmStatus()
+      const ok = service === 'gigachat' ? st.gigachatConfigured : st.openaiConfigured
+      setTestResults((prev) => ({ ...prev, [service]: ok ? 'success' : 'error' }))
+      if (!ok) {
+        toast.error(
+          service === 'gigachat'
+            ? 'GigaChat: ключ не настроен (проверьте Authorization Key)'
+            : 'OpenAI: API ключ не задан',
+        )
+      }
+    } catch (e) {
+      setTestResults((prev) => ({ ...prev, [service]: 'error' }))
+      const msg = e instanceof ApiError ? `Ошибка ${e.status}` : 'Запрос не выполнен'
+      toast.error(msg)
+    }
   }
 
   const clearData = async () => {
-    if (confirm('Вы уверены? Это действие удалит все сохраненные вакансии.')) {
-      // Имитация очистки
-      await new Promise(resolve => setTimeout(resolve, 500))
-      alert('Данные очищены')
+    if (!confirm('Вы уверены? Это действие удалит все сохранённые вакансии из базы.')) return
+    try {
+      const { deleted } = await postClearVacancies()
+      toast.success(`Удалено вакансий: ${deleted}`)
+    } catch (e) {
+      const msg = e instanceof ApiError ? `Ошибка ${e.status}` : 'Не удалось очистить вакансии'
+      toast.error(msg)
     }
   }
 

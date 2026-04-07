@@ -126,6 +126,7 @@ export interface Analytics {
   newToday: number
   analyzed: number
   applied: number
+  favorites: number
   avgSalary: number
   topSkills: { skill: string; count: number }[]
   vacanciesByDate: { date: string; count: number }[]

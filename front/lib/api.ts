@@ -152,6 +152,11 @@ export async function fetchLlmStatus(): Promise<LlmStatusDto> {
   return parseJson(r)
 }
 
+export async function postClearVacancies(): Promise<{ deleted: number }> {
+  const r = await apiFetch('/data/clear-vacancies', { method: 'POST' })
+  return parseJson(r)
+}
+
 export async function fetchResumes(): Promise<Resume[]> {
   const r = await apiFetch('/resumes')
   return parseJson(r)
