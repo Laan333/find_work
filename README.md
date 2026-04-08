@@ -2,12 +2,22 @@
 
 Full-stack приложение для сбора вакансий (hh.ru), хранения в PostgreSQL, анализа совпадения с резюме через LLM (OpenAI / GigaChat), уведомлений и Telegram. Веб-интерфейс на Next.js, API на FastAPI, обратный прокси — nginx в Docker.
 
+## Архитектура
+
+Трафик снаружи идёт в **nginx** (статика и прокси). **Next.js** (`web`) обращается к **FastAPI** (`api`) по внутренней сети Compose; API использует **PostgreSQL** (`db`). Плановые задачи (синк hh.ru, пакетный матчинг, автоанализ) выполняются в процессе API через **APScheduler**.
+
+```text
+Браузер → nginx:HTTP(S) → Next.js → FastAPI → PostgreSQL
+                              ↑______________|
+                         (внутренняя сеть Docker)
+```
+
 ## Возможности
 
 - Синхронизация вакансий по сохранённым поискам (публичное API hh.ru), TTL и логи синка
 - Формат работы в поисковых запросах (`remote`, `fullDay`, `shift`, `flexible`, `flyInFlyOut`)
-- Резюме (несколько записей через API), редактирование в UI, модалка полного текста
-- Анализ вакансии vs резюме (structured JSON, таксономия категорий v15), сопроводительные письма
+- Резюме (несколько записей через API), редактирование в UI, модалка полного текста; загрузка файла **`.txt` / `.pdf` / `.docx`** с извлечением текста в API
+- Анализ вакансии vs резюме (structured JSON, таксономия категорий v15), сопроводительные письма; ответы на скрининговые вопросы (LLM)
 - Ограничение частоты вызовов LLM (настраиваемый интервал, ответ 429 + UI cooldown)
 - Плановый матчинг, аналитика, избранное и статусы по вакансиям
 - Live-статусы процессов (парсинг/AI-анализ), страница «Процессы и логи», фильтры по ожиданию/ошибкам
@@ -20,15 +30,18 @@ Full-stack приложение для сбора вакансий (hh.ru), хр
 
 | Слой        | Технологии |
 |------------|------------|
-| Backend    | Python 3.11+, FastAPI, SQLAlchemy 2, Alembic, PostgreSQL, APScheduler, httpx |
-| Frontend   | Next.js 16, React 19, TypeScript, Tailwind, shadcn/ui |
-| Инфра      | Docker Compose, nginx (шаблоны + `envsubst`), optional TLS |
+| Backend    | Python 3.11+, FastAPI, Uvicorn, SQLAlchemy 2, Alembic, PostgreSQL (psycopg 3), APScheduler, httpx |
+| Данные / AI | Pydantic v2, pydantic-settings, **orjson**, **json-repair**; извлечение текста из резюме: **pypdf**, **python-docx** |
+| Frontend   | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, shadcn/ui (Radix), react-hook-form + zod, react-markdown |
+| Инфра      | Docker Compose, nginx (шаблоны + `envsubst`), опционально TLS |
+
+Подробнее про локальный запуск только API — в [`backend/README.md`](backend/README.md).
 
 ## Структура репозитория
 
 ```
-find_work/
-├── backend/           # FastAPI-приложение, Alembic, pyproject.toml
+.
+├── backend/           # FastAPI-приложение, Alembic, pyproject.toml (пакет find-work-api)
 ├── front/             # Next.js (App Router)
 ├── nginx/             # Dockerfile, шаблоны конфигов, точка монтирования сертификатов
 ├── scripts/           # Вспомогательные скрипты (например backup_postgres.sh)
@@ -36,6 +49,16 @@ find_work/
 ├── .env.example       # Шаблон переменных окружения (скопировать в .env)
 └── README.md
 ```
+
+## Backend: устройство кода
+
+- **`app/main.py`** — точка входа FastAPI, CORS, подключение роутеров, lifespan (планировщик).
+- **`app/routers/`** — HTTP: вакансии, сохранённые поиски, настройки, резюме, синк, аналитика, процессы, LLM status.
+- **`app/services/`** — интеграции: hh.ru, LLM, синхронизация, матчинг, Telegram, разбор файлов резюме и др.
+- **`app/prompts/`**, **`keyword_taxonomy_v15.py`** — промпты и таксономия для структурированного вывода моделей.
+- **`alembic/`** — миграции схемы БД.
+
+Форматирование и линт: **Black** и **Ruff** (длина строки 120), см. `[tool.ruff]` / `[tool.black]` в `backend/pyproject.toml`.
 
 ## Быстрый старт (Docker)
 
@@ -180,6 +203,10 @@ chmod +x scripts/backup_postgres.sh
 - Лимит частоты LLM контролируется `llmMinIntervalSeconds`.
 - По умолчанию анализ идёт батчами (`BATCH_LIMIT = 5`), поэтому большой объём (например 200 вакансий) обрабатывается в несколько циклов.
 - Текущий статус/ожидание видно в верхнем индикаторе и на странице «Процессы и логи».
+
+## Тесты
+
+Автоматический набор `pytest` в репозитории пока не подключён; при расширении логики API, парсеров и интеграций с LLM разумно добавить модульные тесты и моки внешних вызовов.
 
 ## Безопасность
 
