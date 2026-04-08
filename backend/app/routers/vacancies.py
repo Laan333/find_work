@@ -11,7 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import String, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.deps import verify_api_key
@@ -88,10 +88,17 @@ def list_vacancies(
     ),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=MAX_VACANCIES_PAGE_SIZE, alias="pageSize"),
+    saved_search_id: UUID | None = Query(
+        default=None,
+        alias="savedSearchId",
+        description="Filter by saved search (HH query) that first ingested the vacancy",
+    ),
 ) -> dict[str, Any]:
     """Paginated vacancy list."""
 
-    stmt = db.query(Vacancy)
+    stmt = db.query(Vacancy).options(joinedload(Vacancy.saved_search))
+    if saved_search_id is not None:
+        stmt = stmt.filter(Vacancy.saved_search_id == saved_search_id)
     if status is not None:
         stmt = stmt.filter(Vacancy.status == status)
     if favorite_only:
@@ -133,7 +140,12 @@ def get_vacancy(
     db: Session = Depends(get_db),
     _t: str = Depends(verify_api_key),
 ) -> dict[str, Any]:
-    v = db.get(Vacancy, vacancy_id)
+    v = (
+        db.query(Vacancy)
+        .options(joinedload(Vacancy.saved_search))
+        .filter(Vacancy.id == vacancy_id)
+        .one_or_none()
+    )
     if v is None:
         raise HTTPException(status_code=404, detail="Vacancy not found")
     need_full = (

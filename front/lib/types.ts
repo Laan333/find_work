@@ -31,6 +31,9 @@ export interface Vacancy {
   coverLetter?: string
   isFavorite: boolean
   status: 'new' | 'viewed' | 'applied' | 'rejected' | 'interview'
+  /** Сохранённый поиск, с которого вакансия впервые попала в БД (после миграции / нового синка). */
+  searchId?: string | null
+  searchKeyword?: string | null
 }
 
 // Типы для резюме

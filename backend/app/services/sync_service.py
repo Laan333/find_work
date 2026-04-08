@@ -39,7 +39,13 @@ def _post_alert_webhook(message: str) -> None:
         logger.exception("Alert webhook request failed")
 
 
-def _vacancy_insert_row(item: dict[str, Any], *, fetch_detail: bool, vacancy_source: str) -> dict[str, Any]:
+def _vacancy_insert_row(
+    item: dict[str, Any],
+    *,
+    fetch_detail: bool,
+    vacancy_source: str,
+    saved_search_id: uuid.UUID,
+) -> dict[str, Any]:
     """Build insert dict; optionally enrich from vacancy card."""
 
     base = map_list_item_to_row(item, raw_payload=dict(item), vacancy_source=vacancy_source)
@@ -56,6 +62,7 @@ def _vacancy_insert_row(item: dict[str, Any], *, fetch_detail: bool, vacancy_sou
     base["cover_letter_text"] = None
     base["status"] = VacancyStatus.new
     base["id"] = uuid.uuid4()
+    base["saved_search_id"] = saved_search_id
     return base
 
 
@@ -75,7 +82,12 @@ def sync_one_search(db: Session, search: SavedSearch, *, max_pages: int, per_pag
                 break
             fetched_total += len(items)
             for item in items:
-                row = _vacancy_insert_row(item, fetch_detail=fetch_detail, vacancy_source=src.id)
+                row = _vacancy_insert_row(
+                    item,
+                    fetch_detail=fetch_detail,
+                    vacancy_source=src.id,
+                    saved_search_id=search.id,
+                )
                 stmt = pg_insert(Vacancy).values(**row).on_conflict_do_nothing(constraint="uq_vacancy_source_external")
                 res = db.execute(stmt)
                 if res.rowcount:

@@ -61,6 +61,8 @@ def vacancy_to_dict(v: Vacancy) -> dict[str, Any]:
         "coverLetter": v.cover_letter_text,
         "isFavorite": v.is_favorite,
         "status": v.status.value if isinstance(v.status, VacancyStatus) else str(v.status),
+        "searchId": str(v.saved_search_id) if v.saved_search_id else None,
+        "searchKeyword": v.saved_search.keyword if v.saved_search is not None else None,
     }
 
 

@@ -191,6 +191,17 @@ export default function VacanciesPage() {
     }
   }
 
+  const handleToggleNotFit = async (vacancy: Vacancy) => {
+    const nextStatus = vacancy.status === 'rejected' ? 'viewed' : 'rejected'
+    try {
+      const updated = await patchVacancy(vacancy.id, { status: nextStatus })
+      setVacancies((prev) => prev.map((v) => (v.id === vacancy.id ? updated : v)))
+      if (selectedVacancy?.id === vacancy.id) setSelectedVacancy(updated)
+    } catch {
+      toast.error('Не удалось обновить статус')
+    }
+  }
+
   const handleAnalyze = async (vacancy: Vacancy) => {
     try {
       const res = await postAnalyze(vacancy.id)
@@ -396,6 +407,7 @@ export default function VacanciesPage() {
               onGenerateCoverLetter={setCoverLetterVacancy}
               onToggleFavorite={handleToggleFavorite}
               onToggleApplied={handleToggleApplied}
+              onToggleNotFit={handleToggleNotFit}
               onAnalyze={handleAnalyze}
               onDelete={(v) => void handleDeleteVacancy(v)}
             />
@@ -424,6 +436,7 @@ export default function VacanciesPage() {
         onGenerateCoverLetter={setCoverLetterVacancy}
         onToggleFavorite={handleToggleFavorite}
         onToggleApplied={handleToggleApplied}
+        onToggleNotFit={handleToggleNotFit}
       />
 
       <CoverLetterModal

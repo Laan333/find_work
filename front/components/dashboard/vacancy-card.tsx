@@ -17,6 +17,7 @@ import {
   Trash2,
   Send,
   Undo2,
+  Ban,
 } from 'lucide-react'
 import type { Vacancy } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -29,6 +30,7 @@ interface VacancyCardProps {
   onGenerateCoverLetter?: (vacancy: Vacancy) => void
   onToggleFavorite?: (vacancy: Vacancy) => void
   onToggleApplied?: (vacancy: Vacancy) => void
+  onToggleNotFit?: (vacancy: Vacancy) => void
   onViewDetails?: (vacancy: Vacancy) => void
   onDelete?: (vacancy: Vacancy) => void
 }
@@ -40,6 +42,7 @@ export function VacancyCard({
   onGenerateCoverLetter,
   onToggleFavorite,
   onToggleApplied,
+  onToggleNotFit,
   onViewDetails,
   onDelete,
 }: VacancyCardProps) {
@@ -71,12 +74,14 @@ export function VacancyCard({
   }
 
   const isApplied = vacancy.status === 'applied'
+  const isRejected = vacancy.status === 'rejected'
+  const isMuted = isApplied || isRejected
 
   return (
     <Card
       className={cn(
         'border-border/50 hover:border-primary/30 transition-colors',
-        isApplied && 'opacity-75 bg-muted/30',
+        isMuted && 'opacity-75 bg-muted/30',
       )}
     >
       <CardContent className="p-5">
@@ -87,6 +92,11 @@ export function VacancyCard({
               {isApplied && (
                 <span className="shrink-0 text-chart-2" title="Вы откликнулись">
                   <Send className="w-4 h-4" aria-hidden />
+                </span>
+              )}
+              {isRejected && (
+                <span className="shrink-0 text-muted-foreground" title="Не подходит">
+                  <Ban className="w-4 h-4" aria-hidden />
                 </span>
               )}
               <h3
@@ -228,6 +238,17 @@ export function VacancyCard({
           >
             {isApplied ? <Undo2 className="w-4 h-4" /> : <Send className="w-4 h-4" />}
             {isApplied ? 'Снять метку' : 'Откликнулся'}
+          </Button>
+          <Button
+            variant={isRejected ? 'secondary' : 'outline'}
+            size="sm"
+            className="gap-1"
+            disabled={!onToggleNotFit}
+            onClick={() => onToggleNotFit?.(vacancy)}
+            title={isRejected ? 'Снять отметку «не подходит»' : 'Отметить как не подходит'}
+          >
+            {isRejected ? <Undo2 className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+            {isRejected ? 'Снять метку' : 'Не подходит'}
           </Button>
           <Button
             variant="outline"

@@ -16,9 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ApiError, fetchVacancies, fetchVacancy, patchVacancy } from '@/lib/api'
-import type { Vacancy } from '@/lib/types'
-import { Search, ExternalLink, Send, Sparkles, Undo2 } from 'lucide-react'
+import { ApiError, fetchSearches, fetchVacancies, fetchVacancy, patchVacancy } from '@/lib/api'
+import type { SearchQuery, Vacancy } from '@/lib/types'
+import { Search, ExternalLink, Send, Sparkles, Undo2, TextSearch, Ban } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -41,12 +41,21 @@ async function fetchAllVacancies(): Promise<{ items: Vacancy[]; total: number }>
   return { items, total }
 }
 
+/** Ниже в списке: сначала откликнутые, в самом низу — «не подходит» (rejected). */
+function listArchiveRank(status: Vacancy['status']): number {
+  if (status === 'rejected') return 2
+  if (status === 'applied') return 1
+  return 0
+}
+
 export default function MatchScoresPage() {
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
+  const [searches, setSearches] = useState<SearchQuery[]>([])
   const [totalInDb, setTotalInDb] = useState<number>(0)
   const [query, setQuery] = useState('')
   const [minScore, setMinScore] = useState<string>('60')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
+  const [savedSearchFilter, setSavedSearchFilter] = useState<string>('all')
   const [fitPreset, setFitPreset] = useState<'all' | 'stretch' | 'high'>('all')
   const [relevantOnly, setRelevantOnly] = useState<boolean>(true)
   const [appliedFilter, setAppliedFilter] = useState<'all' | 'hide_applied' | 'only_applied'>('all')
@@ -59,10 +68,11 @@ export default function MatchScoresPage() {
     void (async () => {
       setLoading(true)
       try {
-        const { items, total } = await fetchAllVacancies()
+        const [{ items, total }, searchList] = await Promise.all([fetchAllVacancies(), fetchSearches()])
         if (cancelled) return
         setVacancies(items)
         setTotalInDb(total)
+        setSearches(searchList)
       } catch (e) {
         const msg = e instanceof ApiError ? `Ошибка загрузки (${e.status})` : 'Не удалось загрузить вакансии'
         toast.error(msg)
@@ -94,22 +104,38 @@ export default function MatchScoresPage() {
         : appliedFilter === 'only_applied'
           ? byFit.filter((v) => v.status === 'applied')
           : byFit
-    if (!q) return byApplied
-    return byApplied.filter(
+    const bySavedSearch =
+      savedSearchFilter === 'all'
+        ? byApplied
+        : savedSearchFilter === 'unassigned'
+          ? byApplied.filter((v) => !v.searchId)
+          : byApplied.filter((v) => v.searchId === savedSearchFilter)
+    if (!q) return bySavedSearch
+    return bySavedSearch.filter(
       (v) =>
         v.title.toLowerCase().includes(q) ||
         v.company.toLowerCase().includes(q) ||
-        (v.skills || []).some((s) => s.toLowerCase().includes(q)),
+        (v.skills || []).some((s) => s.toLowerCase().includes(q)) ||
+        (v.searchKeyword && v.searchKeyword.toLowerCase().includes(q)),
     )
-  }, [vacancies, query, minScore, sourceFilter, fitPreset, relevantOnly, appliedFilter])
+  }, [
+    vacancies,
+    query,
+    minScore,
+    sourceFilter,
+    savedSearchFilter,
+    fitPreset,
+    relevantOnly,
+    appliedFilter,
+  ])
 
-  /** Сначала активные вакансии по убыванию балла, откликнутые — в конце списка. */
+  /** Активные сверху; затем отклик; внизу — не подходит. Внутри группы — по баллу. */
   const sorted = useMemo(
     () =>
       [...filtered].sort((a, b) => {
-        const aApplied = a.status === 'applied' ? 1 : 0
-        const bApplied = b.status === 'applied' ? 1 : 0
-        if (aApplied !== bApplied) return aApplied - bApplied
+        const ra = listArchiveRank(a.status)
+        const rb = listArchiveRank(b.status)
+        if (ra !== rb) return ra - rb
         return (b.matchScore || 0) - (a.matchScore || 0)
       }),
     [filtered],
@@ -153,6 +179,17 @@ export default function MatchScoresPage() {
       if (selectedVacancy?.id === vacancy.id) setSelectedVacancy(updated)
     } catch {
       toast.error('Не удалось обновить статус отклика')
+    }
+  }
+
+  const handleToggleNotFit = async (vacancy: Vacancy) => {
+    const nextStatus = vacancy.status === 'rejected' ? 'viewed' : 'rejected'
+    try {
+      const updated = await patchVacancy(vacancy.id, { status: nextStatus })
+      setVacancies((prev) => prev.map((x) => (x.id === vacancy.id ? updated : x)))
+      if (selectedVacancy?.id === vacancy.id) setSelectedVacancy(updated)
+    } catch {
+      toast.error('Не удалось обновить статус')
     }
   }
 
@@ -214,6 +251,21 @@ export default function MatchScoresPage() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={savedSearchFilter} onValueChange={setSavedSearchFilter}>
+            <SelectTrigger className="w-[min(280px,100%)] min-w-[200px]">
+              <TextSearch className="w-4 h-4 mr-2 shrink-0 opacity-70" />
+              <SelectValue placeholder="Сохранённый поиск" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все сохранённые поиски</SelectItem>
+              <SelectItem value="unassigned">Без привязки к поиску</SelectItem>
+              {searches.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.keyword}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={appliedFilter} onValueChange={(v) => setAppliedFilter(v as typeof appliedFilter)}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Отклик" />
@@ -256,10 +308,12 @@ export default function MatchScoresPage() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {sorted.map((v) => {
             const applied = v.status === 'applied'
+            const rejected = v.status === 'rejected'
+            const muted = applied || rejected
             return (
               <Card
                 key={v.id}
-                className={cn('border-border/50', applied && 'opacity-75 bg-muted/30')}
+                className={cn('border-border/50', muted && 'opacity-75 bg-muted/30')}
               >
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center justify-between gap-3">
@@ -267,6 +321,11 @@ export default function MatchScoresPage() {
                       {applied && (
                         <span className="shrink-0 text-chart-2" title="Вы откликнулись">
                           <Send className="w-4 h-4" aria-hidden />
+                        </span>
+                      )}
+                      {rejected && (
+                        <span className="shrink-0 text-muted-foreground" title="Не подходит">
+                          <Ban className="w-4 h-4" aria-hidden />
                         </span>
                       )}
                       <span className="truncate">{v.title}</span>
@@ -281,9 +340,21 @@ export default function MatchScoresPage() {
                           Отклик
                         </Badge>
                       )}
+                      {rejected && (
+                        <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                          Не подходит
+                        </Badge>
+                      )}
                     </div>
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">{v.company}</p>
+                  <div className="flex items-start gap-1.5 text-xs text-muted-foreground pt-0.5">
+                    <TextSearch className="w-3.5 h-3.5 shrink-0 mt-0.5 opacity-70" aria-hidden />
+                    <span>
+                      <span className="font-medium text-foreground/80">Сохранённый поиск: </span>
+                      <span className="break-words">{v.searchKeyword?.trim() || '—'}</span>
+                    </span>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex flex-wrap gap-2">
@@ -306,6 +377,15 @@ export default function MatchScoresPage() {
                     >
                       {applied ? <Undo2 className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
                       {applied ? 'Снять метку' : 'Откликнулся'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={rejected ? 'secondary' : 'outline'}
+                      className="gap-1"
+                      onClick={() => void handleToggleNotFit(v)}
+                    >
+                      {rejected ? <Undo2 className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
+                      {rejected ? 'Снять метку' : 'Не подходит'}
                     </Button>
                     <Button
                       size="sm"
@@ -339,6 +419,7 @@ export default function MatchScoresPage() {
         onGenerateCoverLetter={setCoverLetterVacancy}
         onToggleFavorite={handleToggleFavorite}
         onToggleApplied={handleToggleApplied}
+        onToggleNotFit={handleToggleNotFit}
       />
       <CoverLetterModal
         vacancy={coverLetterVacancy}

@@ -95,6 +95,13 @@ class Vacancy(Base):
         default=VacancyStatus.new,
     )
 
+    saved_search_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("saved_search.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    saved_search: Mapped["SavedSearch | None"] = relationship("SavedSearch", back_populates="vacancies")
     cover_letters: Mapped[list["CoverLetter"]] = relationship(back_populates="vacancy", cascade="all, delete-orphan")
     analyses: Mapped[list["VacancyAnalysis"]] = relationship(
         back_populates="vacancy",
@@ -130,6 +137,8 @@ class SavedSearch(Base):
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     vacancies_found: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    vacancies: Mapped[list["Vacancy"]] = relationship("Vacancy", back_populates="saved_search")
 
 
 class Resume(Base):

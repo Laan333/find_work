@@ -14,6 +14,7 @@ interface RecentVacanciesProps {
   onGenerateCoverLetter?: (vacancy: Vacancy) => void
   onToggleFavorite?: (vacancy: Vacancy) => void
   onToggleApplied?: (vacancy: Vacancy) => void
+  onToggleNotFit?: (vacancy: Vacancy) => void
   onViewDetails?: (vacancy: Vacancy) => void
   onDelete?: (vacancy: Vacancy) => void
 }
@@ -25,6 +26,7 @@ export function RecentVacancies({
   onGenerateCoverLetter,
   onToggleFavorite,
   onToggleApplied,
+  onToggleNotFit,
   onViewDetails,
   onDelete,
 }: RecentVacanciesProps) {
@@ -49,6 +51,7 @@ export function RecentVacancies({
             onGenerateCoverLetter={onGenerateCoverLetter}
             onToggleFavorite={onToggleFavorite}
             onToggleApplied={onToggleApplied}
+            onToggleNotFit={onToggleNotFit}
             onViewDetails={onViewDetails}
             onDelete={onDelete}
           />

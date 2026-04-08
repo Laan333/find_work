@@ -111,6 +111,17 @@ export default function DashboardPage() {
     }
   }
 
+  const handleToggleNotFit = async (vacancy: Vacancy) => {
+    const nextStatus = vacancy.status === 'rejected' ? 'viewed' : 'rejected'
+    try {
+      const updated = await patchVacancy(vacancy.id, { status: nextStatus })
+      setVacancies((prev) => prev.map((x) => (x.id === vacancy.id ? updated : x)))
+      if (selectedVacancy?.id === vacancy.id) setSelectedVacancy(updated)
+    } catch {
+      toast.error('Не удалось обновить статус')
+    }
+  }
+
   const handleCoverSaved = (vacancyId: string, text: string) => {
     setVacancies((prev) =>
       prev.map((x) => (x.id === vacancyId ? { ...x, coverLetter: text } : x)),
@@ -211,6 +222,7 @@ export default function DashboardPage() {
               onGenerateCoverLetter={setCoverLetterVacancy}
               onToggleFavorite={handleToggleFavorite}
               onToggleApplied={handleToggleApplied}
+              onToggleNotFit={handleToggleNotFit}
               onAnalyze={handleAnalyze}
               onDelete={(v) => void handleDeleteVacancy(v)}
             />
@@ -227,6 +239,7 @@ export default function DashboardPage() {
         onGenerateCoverLetter={setCoverLetterVacancy}
         onToggleFavorite={handleToggleFavorite}
         onToggleApplied={handleToggleApplied}
+        onToggleNotFit={handleToggleNotFit}
       />
       <CoverLetterModal
         vacancy={coverLetterVacancy}

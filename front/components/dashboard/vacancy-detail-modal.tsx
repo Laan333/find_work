@@ -25,6 +25,7 @@ import {
   Sparkles,
   Send,
   Undo2,
+  Ban,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -34,6 +35,7 @@ interface VacancyDetailModalProps {
   onGenerateCoverLetter?: (vacancy: Vacancy) => void
   onToggleFavorite?: (vacancy: Vacancy) => void
   onToggleApplied?: (vacancy: Vacancy) => void
+  onToggleNotFit?: (vacancy: Vacancy) => void
 }
 
 export function VacancyDetailModal({
@@ -42,6 +44,7 @@ export function VacancyDetailModal({
   onGenerateCoverLetter,
   onToggleFavorite,
   onToggleApplied,
+  onToggleNotFit,
 }: VacancyDetailModalProps) {
   if (!vacancy) return null
 
@@ -222,6 +225,24 @@ export function VacancyDetailModal({
               <>
                 <Send className="w-4 h-4" />
                 Откликнулся
+              </>
+            )}
+          </Button>
+          <Button
+            variant={vacancy.status === 'rejected' ? 'secondary' : 'outline'}
+            className="gap-2"
+            disabled={!onToggleNotFit}
+            onClick={() => onToggleNotFit?.(vacancy)}
+          >
+            {vacancy.status === 'rejected' ? (
+              <>
+                <Undo2 className="w-4 h-4" />
+                Снять «не подходит»
+              </>
+            ) : (
+              <>
+                <Ban className="w-4 h-4" />
+                Не подходит
               </>
             )}
           </Button>

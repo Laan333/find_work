@@ -65,6 +65,7 @@ export async function fetchVacancies(params?: {
   favoriteOnly?: boolean
   status?: string
   q?: string
+  savedSearchId?: string
 }): Promise<VacanciesListResponse> {
   const sp = new URLSearchParams()
   if (params?.page) sp.set('page', String(params.page))
@@ -72,6 +73,7 @@ export async function fetchVacancies(params?: {
   if (params?.favoriteOnly) sp.set('favoriteOnly', 'true')
   if (params?.status) sp.set('status', params.status)
   if (params?.q?.trim()) sp.set('q', params.q.trim())
+  if (params?.savedSearchId?.trim()) sp.set('savedSearchId', params.savedSearchId.trim())
   const q = sp.toString()
   const r = await apiFetch(`/vacancies/${q ? `?${q}` : ''}`)
   return parseJson(r)
