@@ -18,6 +18,7 @@ from app.config import get_settings
 from app.models import SavedSearch, SyncRun, SyncRunItem, SyncTrigger, Vacancy, VacancyStatus
 from app.services import hh_client
 from app.services.hh_mapper import enrich_from_detail, map_list_item_to_row
+from app.services.vacancy_url import vacancy_url_canonical
 from app.services.process_events import clear_active, emit_event, set_active
 from app.services.telegram_service import send_message
 from app.settings_service import ensure_defaults, get_bool, get_int
@@ -63,14 +64,19 @@ def _vacancy_insert_row(
     base["status"] = VacancyStatus.new
     base["id"] = uuid.uuid4()
     base["saved_search_id"] = saved_search_id
+    base["url_canonical"] = vacancy_url_canonical(
+        str(base["source"]),
+        str(base["external_id"]),
+        str(base.get("url") or ""),
+    )
     return base
 
 
 def sync_one_search(db: Session, search: SavedSearch, *, max_pages: int, per_page: int, fetch_detail: bool) -> dict[str, Any]:
     """Run hh fetch for one saved search.
 
-    New rows get ``saved_search_id``. On conflict (duplicate), updates ``saved_search_id``
-    only when it is NULL so existing rows receive a search link after the next sync.
+    New rows get ``saved_search_id``. Conflicts are resolved by ``(source, url_canonical)``
+    (normalized vacancy URL). On conflict, ``saved_search_id`` is set only when it is NULL.
     """
 
     inserted = 0
@@ -92,7 +98,9 @@ def sync_one_search(db: Session, search: SavedSearch, *, max_pages: int, per_pag
                     vacancy_source=src.id,
                     saved_search_id=search.id,
                 )
-                stmt = pg_insert(Vacancy).values(**row).on_conflict_do_nothing(constraint="uq_vacancy_source_external")
+                stmt = pg_insert(Vacancy).values(**row).on_conflict_do_nothing(
+                    constraint="uq_vacancy_source_url_canonical",
+                )
                 res = db.execute(stmt)
                 if res.rowcount:
                     inserted += 1
@@ -101,7 +109,7 @@ def sync_one_search(db: Session, search: SavedSearch, *, max_pages: int, per_pag
                     upd = (
                         update(Vacancy)
                         .where(Vacancy.source == row["source"])
-                        .where(Vacancy.external_id == row["external_id"])
+                        .where(Vacancy.url_canonical == row["url_canonical"])
                         .where(Vacancy.saved_search_id.is_(None))
                         .values(saved_search_id=search.id)
                     )

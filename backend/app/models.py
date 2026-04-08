@@ -51,11 +51,12 @@ class Vacancy(Base):
     """Vacancy stored from external sources (e.g. hh.ru)."""
 
     __tablename__ = "vacancy"
-    __table_args__ = (UniqueConstraint("source", "external_id", name="uq_vacancy_source_external"),)
+    __table_args__ = (UniqueConstraint("source", "url_canonical", name="uq_vacancy_source_url_canonical"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     source: Mapped[str] = mapped_column(String(32), nullable=False, default="hh")
     external_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    url_canonical: Mapped[str] = mapped_column(String(2048), nullable=False, default="")
     raw_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
     title: Mapped[str] = mapped_column(String(512), nullable=False, default="")
