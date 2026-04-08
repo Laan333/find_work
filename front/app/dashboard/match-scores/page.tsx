@@ -22,13 +22,34 @@ import { Search, ExternalLink, Send, Sparkles, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
+/** Совпадает с верхней границей pageSize в API вакансий. */
+const VACANCIES_PAGE_MAX = 500
+
+async function fetchAllVacancies(): Promise<{ items: Vacancy[]; total: number }> {
+  const items: Vacancy[] = []
+  let page = 1
+  let total = 0
+  for (;;) {
+    const res = await fetchVacancies({ page, pageSize: VACANCIES_PAGE_MAX })
+    total = res.total
+    items.push(...res.items)
+    if (res.items.length === 0 || res.items.length < VACANCIES_PAGE_MAX || items.length >= total) {
+      break
+    }
+    page += 1
+  }
+  return { items, total }
+}
+
 export default function MatchScoresPage() {
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
+  const [totalInDb, setTotalInDb] = useState<number>(0)
   const [query, setQuery] = useState('')
   const [minScore, setMinScore] = useState<string>('60')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
   const [fitPreset, setFitPreset] = useState<'all' | 'stretch' | 'high'>('all')
   const [relevantOnly, setRelevantOnly] = useState<boolean>(true)
+  const [appliedFilter, setAppliedFilter] = useState<'all' | 'hide_applied' | 'only_applied'>('all')
   const [selectedVacancy, setSelectedVacancy] = useState<Vacancy | null>(null)
   const [coverLetterVacancy, setCoverLetterVacancy] = useState<Vacancy | null>(null)
   const [loading, setLoading] = useState(true)
@@ -38,9 +59,10 @@ export default function MatchScoresPage() {
     void (async () => {
       setLoading(true)
       try {
-        const first = await fetchVacancies({ page: 1, pageSize: 200 })
+        const { items, total } = await fetchAllVacancies()
         if (cancelled) return
-        setVacancies(first.items)
+        setVacancies(items)
+        setTotalInDb(total)
       } catch (e) {
         const msg = e instanceof ApiError ? `Ошибка загрузки (${e.status})` : 'Не удалось загрузить вакансии'
         toast.error(msg)
@@ -66,19 +88,34 @@ export default function MatchScoresPage() {
             if (fitPreset === 'stretch') return score >= 70 && score <= 84
             return score >= 85
           })
-    if (!q) return byFit
-    return byFit.filter(
+    const byApplied =
+      appliedFilter === 'hide_applied'
+        ? byFit.filter((v) => v.status !== 'applied')
+        : appliedFilter === 'only_applied'
+          ? byFit.filter((v) => v.status === 'applied')
+          : byFit
+    if (!q) return byApplied
+    return byApplied.filter(
       (v) =>
         v.title.toLowerCase().includes(q) ||
         v.company.toLowerCase().includes(q) ||
         (v.skills || []).some((s) => s.toLowerCase().includes(q)),
     )
-  }, [vacancies, query, minScore, sourceFilter, fitPreset, relevantOnly])
+  }, [vacancies, query, minScore, sourceFilter, fitPreset, relevantOnly, appliedFilter])
 
+  /** Сначала активные вакансии по убыванию балла, откликнутые — в конце списка. */
   const sorted = useMemo(
-    () => [...filtered].sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0)),
+    () =>
+      [...filtered].sort((a, b) => {
+        const aApplied = a.status === 'applied' ? 1 : 0
+        const bApplied = b.status === 'applied' ? 1 : 0
+        if (aApplied !== bApplied) return aApplied - bApplied
+        return (b.matchScore || 0) - (a.matchScore || 0)
+      }),
     [filtered],
   )
+
+  const analyzedLoaded = useMemo(() => vacancies.filter((v) => v.isAnalyzed).length, [vacancies])
 
   const sourceOptions = useMemo(() => {
     const set = new Set<string>()
@@ -140,7 +177,7 @@ export default function MatchScoresPage() {
     <div className="flex flex-col h-full">
       <Header
         title="Матч-баллы вакансий"
-        subtitle={`Всего с анализом: ${sorted.length} из ${vacancies.length}`}
+        subtitle={`В выборке: ${sorted.length} · проанализировано (загружено): ${analyzedLoaded} · всего вакансий в БД: ${totalInDb || vacancies.length}`}
       />
       <div className="flex-1 p-6 space-y-4 overflow-auto">
         <div className="flex flex-wrap items-center gap-3">
@@ -175,6 +212,16 @@ export default function MatchScoresPage() {
                   {s === 'all' ? 'Все источники' : s.toUpperCase()}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={appliedFilter} onValueChange={(v) => setAppliedFilter(v as typeof appliedFilter)}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Отклик" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все (отклик внизу)</SelectItem>
+              <SelectItem value="hide_applied">Без откликнутых</SelectItem>
+              <SelectItem value="only_applied">Только откликнутые</SelectItem>
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2">
