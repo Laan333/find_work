@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import delete
+from sqlalchemy import delete, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -67,7 +67,11 @@ def _vacancy_insert_row(
 
 
 def sync_one_search(db: Session, search: SavedSearch, *, max_pages: int, per_page: int, fetch_detail: bool) -> dict[str, Any]:
-    """Run hh fetch for one saved search; insert new vacancies only."""
+    """Run hh fetch for one saved search.
+
+    New rows get ``saved_search_id``. On conflict (duplicate), updates ``saved_search_id``
+    only when it is NULL so existing rows receive a search link after the next sync.
+    """
 
     inserted = 0
     skipped = 0
@@ -94,6 +98,14 @@ def sync_one_search(db: Session, search: SavedSearch, *, max_pages: int, per_pag
                     inserted += 1
                 else:
                     skipped += 1
+                    upd = (
+                        update(Vacancy)
+                        .where(Vacancy.source == row["source"])
+                        .where(Vacancy.external_id == row["external_id"])
+                        .where(Vacancy.saved_search_id.is_(None))
+                        .values(saved_search_id=search.id)
+                    )
+                    db.execute(upd)
             pages = data.get("pages") or 1
             if page + 1 >= pages:
                 break
